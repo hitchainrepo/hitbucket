@@ -6,7 +6,6 @@ import gitbucket.core.model.Account
 import gitbucket.core.service.RepositoryService.RepositoryInfo
 import gitbucket.core.util._
 import gitbucket.core.util.SyntaxSugars._
-import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.treewalk.CanonicalTreeParser
 import org.eclipse.jgit.lib._
 import org.eclipse.jgit.dircache.DirCache
@@ -73,7 +72,7 @@ trait WikiService {
    * Returns the wiki page.
    */
   def getWikiPage(owner: String, repository: String, pageName: String): Option[WikiPageInfo] = {
-    using(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
+    using(JGitUtil.gitOpen(Directory.getWikiRepositoryDir(owner, repository))) { git =>
       if (!JGitUtil.isEmpty(git)) {
         JGitUtil.getFileList(git, "master", ".").find(_.name == pageName + ".md").map { file =>
           WikiPageInfo(
@@ -92,7 +91,7 @@ trait WikiService {
    * Returns the list of wiki page names.
    */
   def getWikiPageList(owner: String, repository: String): List[String] = {
-    using(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
+    using(JGitUtil.gitOpen(Directory.getWikiRepositoryDir(owner, repository))) { git =>
       JGitUtil
         .getFileList(git, "master", ".")
         .filter(_.name.endsWith(".md"))
@@ -118,7 +117,7 @@ trait WikiService {
 
     try {
       LockUtil.lock(s"${owner}/${repository}/wiki") {
-        using(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
+        using(JGitUtil.gitOpen(Directory.getWikiRepositoryDir(owner, repository))) { git =>
           val reader = git.getRepository.newObjectReader
           val oldTreeIter = new CanonicalTreeParser
           oldTreeIter.reset(reader, git.getRepository.resolve(from + "^{tree}"))
@@ -212,6 +211,9 @@ trait WikiService {
               }
             )
           }
+
+          // ==更新项目==
+          JGitUtil.updateProject(Directory.getWikiRepositoryDir(owner, repository))
         }
       }
       true
@@ -237,7 +239,7 @@ trait WikiService {
     currentId: Option[String]
   ): Option[String] = {
     LockUtil.lock(s"${owner}/${repository}/wiki") {
-      using(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
+      using(JGitUtil.gitOpen(Directory.getWikiRepositoryDir(owner, repository))) { git =>
         val builder = DirCache.newInCore.builder()
         val inserter = git.getRepository.newObjectInserter()
         val headId = git.getRepository.resolve(Constants.HEAD + "^{commit}")
@@ -291,6 +293,9 @@ trait WikiService {
             }
           )
 
+          // ==更新项目==
+          JGitUtil.updateProject(Directory.getWikiRepositoryDir(owner, repository))
+
           Some(newHeadId.getName)
         } else None
       }
@@ -309,7 +314,7 @@ trait WikiService {
     message: String
   ): Unit = {
     LockUtil.lock(s"${owner}/${repository}/wiki") {
-      using(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
+      using(JGitUtil.gitOpen(Directory.getWikiRepositoryDir(owner, repository))) { git =>
         val builder = DirCache.newInCore.builder()
         val inserter = git.getRepository.newObjectInserter()
         val headId = git.getRepository.resolve(Constants.HEAD + "^{commit}")
@@ -335,6 +340,9 @@ trait WikiService {
             message
           )
         }
+
+        // ==更新项目==
+        JGitUtil.updateProject(Directory.getWikiRepositoryDir(owner, repository))
       }
     }
   }

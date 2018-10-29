@@ -9,7 +9,6 @@ import gitbucket.core.util._
 import gitbucket.core.util.SyntaxSugars._
 import gitbucket.core.util.Directory._
 import gitbucket.core.util.Implicits._
-import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.dircache.DirCache
 import org.eclipse.jgit.lib.{Constants, FileMode}
 import org.scalatra._
@@ -80,7 +79,7 @@ class FileUploadController
             { (file, fileId) =>
               val fileName = file.getName
               LockUtil.lock(s"${owner}/${repository}/wiki") {
-                using(Git.open(Directory.getWikiRepositoryDir(owner, repository))) {
+                using(JGitUtil.gitOpen(Directory.getWikiRepositoryDir(owner, repository))) {
                   git =>
                     val builder = DirCache.newInCore.builder()
                     val inserter = git.getRepository.newObjectInserter()

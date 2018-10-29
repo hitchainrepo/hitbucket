@@ -13,7 +13,6 @@ import gitbucket.core.service.WebHookService.WebHookPushPayload
 import gitbucket.core.util.Directory.{getRepositoryDir, getRepositoryFilesDir, getTemporaryDir, getWikiRepositoryDir}
 import gitbucket.core.util.JGitUtil.{CommitInfo, FileInfo}
 import org.apache.commons.io.FileUtils
-import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.dircache.{DirCache, DirCacheBuilder}
 import org.eclipse.jgit.lib.{Repository => _, _}
 import org.eclipse.jgit.transport.{ReceiveCommand, ReceivePack}
@@ -755,7 +754,7 @@ trait RepositoryService {
         }
 
     // Get template file from project root. When didn't find, will lookup default folder.
-    using(Git.open(Directory.getRepositoryDir(repository.owner, repository.name))) { git =>
+    using(JGitUtil.gitOpen(Directory.getRepositoryDir(repository.owner, repository.name))) { git =>
       choiceTemplate(JGitUtil.getFileList(git, repository.repository.defaultBranch, "."))
         .orElse {
           choiceTemplate(JGitUtil.getFileList(git, repository.repository.defaultBranch, ".gitbucket"))

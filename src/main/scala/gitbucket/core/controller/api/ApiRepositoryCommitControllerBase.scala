@@ -8,7 +8,6 @@ import gitbucket.core.util.Implicits._
 import gitbucket.core.util.JGitUtil.CommitInfo
 import gitbucket.core.util.{JGitUtil, ReferrerAuthenticator, RepositoryName}
 import gitbucket.core.util.SyntaxSugars.using
-import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.revwalk.RevWalk
 
 trait ApiRepositoryCommitControllerBase extends ControllerBase {
@@ -27,7 +26,7 @@ trait ApiRepositoryCommitControllerBase extends ControllerBase {
     val name = repository.name
     val sha = params("sha")
 
-    using(Git.open(getRepositoryDir(owner, name))) {
+    using(JGitUtil.gitOpen(getRepositoryDir(owner, name))) {
       git =>
         val repo = git.getRepository
         val objectId = repo.resolve(sha)

@@ -22,6 +22,8 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 
+import gitbucket.core.util._
+import org.apache.commons.lang3.StringUtils
 import org.cache2k.Cache2kBuilder
 import org.eclipse.jgit.api.errors._
 import org.eclipse.jgit.diff.{DiffEntry, DiffFormatter, RawTextComparator}
@@ -246,7 +248,7 @@ object JGitUtil {
     val entry = cache.getEntry(key)
 
     if (entry == null) {
-      using(Git.open(dir)) { git =>
+      using(gitOpen(dir)) { git =>
         val commitId = git.getRepository.resolve(branch)
         val commitCount = git.log.add(commitId).call.iterator.asScala.take(10001).size
         cache.put(key, commitCount)
@@ -258,10 +260,28 @@ object JGitUtil {
   }
 
   /**
+   * Add by tylerchen
+   * @param dir
+   * @return
+   */
+  def gitOpen(dir: File): Git = {
+    GitHelper.open(dir)
+  }
+
+  /**
+   * Add by tylerchen
+   * @param dir
+   * @return
+   */
+  def updateProject(dir: File): String = {
+    GitHelper.updateProject(dir)
+  }
+
+  /**
    * Returns the repository information. It contains branch names and tag names.
    */
   def getRepositoryInfo(owner: String, repository: String): RepositoryInfo = {
-    using(Git.open(getRepositoryDir(owner, repository))) { git =>
+    using(gitOpen(getRepositoryDir(owner, repository))) { git =>
       try {
         RepositoryInfo(
           owner,
@@ -805,11 +825,14 @@ object JGitUtil {
       }
     }
 
+  //def initRepository(dir: java.io.File): Unit = {
   def initRepository(dir: java.io.File): Unit =
     using(new RepositoryBuilder().setGitDir(dir).setBare.build) { repository =>
       repository.create(true)
       setReceivePack(repository)
     }
+  //gitbucket.core.util.GitHelper.initRepository(dir)
+  //}
 
   def cloneRepository(from: java.io.File, to: java.io.File): Unit =
     using(Git.cloneRepository.setURI(from.toURI.toString).setDirectory(to).setBare(true).call) { git =>
@@ -1120,8 +1143,8 @@ object JGitUtil {
     requestBranch: String
   ): (String, String) =
     using(
-      Git.open(Directory.getRepositoryDir(userName, repositoryName)),
-      Git.open(Directory.getRepositoryDir(requestUserName, requestRepositoryName))
+      gitOpen(Directory.getRepositoryDir(userName, repositoryName)),
+      gitOpen(Directory.getRepositoryDir(requestUserName, requestRepositoryName))
     ) { (oldGit, newGit) =>
       oldGit.fetch
         .setRemote(Directory.getRepositoryDir(requestUserName, requestRepositoryName).toURI.toString)
@@ -1155,7 +1178,7 @@ object JGitUtil {
   }
 
   def getBranches(owner: String, name: String, defaultBranch: String, origin: Boolean): Seq[BranchInfo] = {
-    using(Git.open(getRepositoryDir(owner, name))) { git =>
+    using(gitOpen(getRepositoryDir(owner, name))) { git =>
       val repo = git.getRepository
       val defaultObject = repo.resolve(defaultBranch)
 
@@ -1238,7 +1261,7 @@ object JGitUtil {
    * @return sha1
    */
   def getShaByRef(owner: String, name: String, revstr: String): Option[String] = {
-    using(Git.open(getRepositoryDir(owner, name))) { git =>
+    using(gitOpen(getRepositoryDir(owner, name))) { git =>
       Option(git.getRepository.resolve(revstr)).map(ObjectId.toString(_))
     }
   }

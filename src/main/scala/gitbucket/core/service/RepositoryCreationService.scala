@@ -107,7 +107,7 @@ trait RepositoryCreationService {
         JGitUtil.initRepository(gitdir)
 
         if (initOption == "README" || initOption == "EMPTY_COMMIT") {
-          using(Git.open(gitdir)) { git =>
+          using(JGitUtil.gitOpen(gitdir)) { git =>
             val builder = DirCache.newInCore.builder()
             val inserter = git.getRepository.newObjectInserter()
             val headId = git.getRepository.resolve(Constants.HEAD + "^{commit}")
@@ -148,7 +148,7 @@ trait RepositoryCreationService {
 
         copyRepositoryDir.foreach { dir =>
           try {
-            using(Git.open(dir)) { git =>
+            using(JGitUtil.gitOpen(dir)) { git =>
               git.push().setRemote(gitdir.toURI.toString).setPushAll().setPushTags().call()
             }
           } finally {
@@ -164,6 +164,9 @@ trait RepositoryCreationService {
 
         // Call hooks
         PluginRegistry().getRepositoryHooks.foreach(_.created(owner, name))
+
+        // ==更新项目==
+        JGitUtil.updateProject(gitdir)
       }
 
       RepositoryCreationService.endCreation(owner, name, None)
@@ -231,6 +234,9 @@ trait RepositoryCreationService {
 
           // Call hooks
           PluginRegistry().getRepositoryHooks.foreach(_.forked(repository.owner, accountName, repository.name))
+
+          // ==更新项目==
+          JGitUtil.updateProject(getRepositoryDir(accountName, repository.name))
 
           RepositoryCreationService.endCreation(accountName, repository.name, None)
         }

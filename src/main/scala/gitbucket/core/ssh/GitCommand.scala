@@ -4,7 +4,7 @@ import gitbucket.core.model.Profile.profile.blockingApi._
 import gitbucket.core.plugin.{GitRepositoryRouting, PluginRegistry}
 import gitbucket.core.service.{AccountService, DeployKeyService, RepositoryService, SystemSettingsService}
 import gitbucket.core.servlet.{CommitLogHook, Database}
-import gitbucket.core.util.{SyntaxSugars, Directory}
+import gitbucket.core.util.{SyntaxSugars, Directory, JGitUtil}
 import org.apache.sshd.server.{Environment, ExitCallback, SessionAware}
 import org.apache.sshd.server.{Command, CommandFactory}
 import org.apache.sshd.server.session.ServerSession
@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory
 import java.io.{File, InputStream, OutputStream}
 
 import SyntaxSugars._
-import org.eclipse.jgit.api.Git
 import Directory._
 import gitbucket.core.ssh.PublicKeyAuthenticator.AuthType
 import org.eclipse.jgit.transport.{ReceivePack, UploadPack}
@@ -152,7 +151,7 @@ class DefaultGitUploadPack(owner: String, repoName: String)
     }
 
     if (execute) {
-      using(Git.open(getRepositoryDir(owner, repoName))) { git =>
+      using(JGitUtil.gitOpen(getRepositoryDir(owner, repoName))) { git =>
         val repository = git.getRepository
         val upload = new UploadPack(repository)
         upload.upload(in, out, err)
@@ -177,7 +176,7 @@ class DefaultGitReceivePack(owner: String, repoName: String, baseUrl: String, ss
     }
 
     if (execute) {
-      using(Git.open(getRepositoryDir(owner, repoName))) { git =>
+      using(JGitUtil.gitOpen(getRepositoryDir(owner, repoName))) { git =>
         val repository = git.getRepository
         val receive = new ReceivePack(repository)
         if (!repoName.endsWith(".wiki")) {
@@ -202,7 +201,7 @@ class PluginGitUploadPack(repoName: String, routing: GitRepositoryRouting)
 
     if (execute) {
       val path = routing.urlPattern.r.replaceFirstIn(repoName, routing.localPath)
-      using(Git.open(new File(Directory.GitBucketHome, path))) { git =>
+      using(JGitUtil.gitOpen(new File(Directory.GitBucketHome, path))) { git =>
         val repository = git.getRepository
         val upload = new UploadPack(repository)
         upload.upload(in, out, err)
@@ -222,7 +221,7 @@ class PluginGitReceivePack(repoName: String, routing: GitRepositoryRouting)
 
     if (execute) {
       val path = routing.urlPattern.r.replaceFirstIn(repoName, routing.localPath)
-      using(Git.open(new File(Directory.GitBucketHome, path))) { git =>
+      using(JGitUtil.gitOpen(new File(Directory.GitBucketHome, path))) { git =>
         val repository = git.getRepository
         val receive = new ReceivePack(repository)
         receive.receive(in, out, err)

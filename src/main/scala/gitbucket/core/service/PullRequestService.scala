@@ -12,7 +12,6 @@ import gitbucket.core.util.JGitUtil
 import gitbucket.core.util.JGitUtil.{CommitInfo, DiffInfo}
 import gitbucket.core.view
 import gitbucket.core.view.helpers
-import org.eclipse.jgit.api.Git
 
 import scala.collection.JavaConverters._
 
@@ -328,8 +327,8 @@ trait PullRequestService {
     requestCommitId: String
   ): (Seq[Seq[CommitInfo]], Seq[DiffInfo]) =
     using(
-      Git.open(getRepositoryDir(userName, repositoryName)),
-      Git.open(getRepositoryDir(requestUserName, requestRepositoryName))
+      JGitUtil.gitOpen(getRepositoryDir(userName, repositoryName)),
+      JGitUtil.gitOpen(getRepositoryDir(requestUserName, requestRepositoryName))
     ) { (oldGit, newGit) =>
       val oldId = oldGit.getRepository.resolve(branch)
       val newId = newGit.getRepository.resolve(requestCommitId)

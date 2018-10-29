@@ -5,10 +5,10 @@ import gitbucket.core.util._
 import gitbucket.core.util.StringUtil
 import Directory._
 import SyntaxSugars._
+import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.revwalk.RevWalk
 import org.eclipse.jgit.treewalk.TreeWalk
 import org.eclipse.jgit.lib.FileMode
-import org.eclipse.jgit.api.Git
 import gitbucket.core.model.Profile.profile.blockingApi._
 
 trait RepositorySearchService { self: IssuesService =>
@@ -37,12 +37,12 @@ trait RepositorySearchService { self: IssuesService =>
     }
 
   def countFiles(owner: String, repository: String, query: String): Int =
-    using(Git.open(getRepositoryDir(owner, repository))) { git =>
+    using(JGitUtil.gitOpen(getRepositoryDir(owner, repository))) { git =>
       if (JGitUtil.isEmpty(git)) 0 else searchRepositoryFiles(git, query).length
     }
 
   def searchFiles(owner: String, repository: String, query: String): List[FileSearchResult] =
-    using(Git.open(getRepositoryDir(owner, repository))) { git =>
+    using(JGitUtil.gitOpen(getRepositoryDir(owner, repository))) { git =>
       if (JGitUtil.isEmpty(git)) {
         Nil
       } else {
@@ -57,12 +57,12 @@ trait RepositorySearchService { self: IssuesService =>
     }
 
   def countWikiPages(owner: String, repository: String, query: String): Int =
-    using(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
+    using(JGitUtil.gitOpen(Directory.getWikiRepositoryDir(owner, repository))) { git =>
       if (JGitUtil.isEmpty(git)) 0 else searchRepositoryFiles(git, query).length
     }
 
   def searchWikiPages(owner: String, repository: String, query: String): List[FileSearchResult] =
-    using(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
+    using(JGitUtil.gitOpen(Directory.getWikiRepositoryDir(owner, repository))) { git =>
       if (JGitUtil.isEmpty(git)) {
         Nil
       } else {

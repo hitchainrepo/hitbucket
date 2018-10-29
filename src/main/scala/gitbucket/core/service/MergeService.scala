@@ -11,8 +11,8 @@ import gitbucket.core.util.SyntaxSugars._
 import gitbucket.core.model.Profile._
 import gitbucket.core.model.Profile.profile._
 import gitbucket.core.model.Profile.profile.blockingApi._
-import org.eclipse.jgit.merge.{MergeStrategy, Merger, RecursiveMerger}
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.merge.{MergeStrategy, Merger, RecursiveMerger}
 import org.eclipse.jgit.transport.RefSpec
 import org.eclipse.jgit.errors.NoMergeBaseException
 import org.eclipse.jgit.lib.{CommitBuilder, ObjectId, PersonIdent, Repository}
@@ -35,7 +35,7 @@ trait MergeService {
    * Returns true if conflict will be caused.
    */
   def checkConflict(userName: String, repositoryName: String, branch: String, issueId: Int): Option[String] = {
-    using(Git.open(getRepositoryDir(userName, repositoryName))) { git =>
+    using(JGitUtil.gitOpen(getRepositoryDir(userName, repositoryName))) { git =>
       new MergeCacheInfo(git, branch, issueId).checkConflict()
     }
   }
@@ -52,7 +52,7 @@ trait MergeService {
     branch: String,
     issueId: Int
   ): Option[Option[String]] = {
-    using(Git.open(getRepositoryDir(userName, repositoryName))) { git =>
+    using(JGitUtil.gitOpen(getRepositoryDir(userName, repositoryName))) { git =>
       new MergeCacheInfo(git, branch, issueId).checkConflictCache()
     }
   }
@@ -99,7 +99,7 @@ trait MergeService {
     requestBranch: String,
     issueId: Int
   ): Unit = {
-    using(Git.open(getRepositoryDir(userName, repositoryName))) { git =>
+    using(JGitUtil.gitOpen(getRepositoryDir(userName, repositoryName))) { git =>
       git.fetch
         .setRemote(getRepositoryDir(requestUserName, requestRepositoryName).toURI.toString)
         .setRefSpecs(new RefSpec(s"refs/heads/${requestBranch}:refs/pull/${issueId}/head"))
@@ -118,7 +118,7 @@ trait MergeService {
     remoteRepositoryName: String,
     remoteBranch: String
   ): Either[String, (ObjectId, ObjectId, ObjectId)] = {
-    using(Git.open(getRepositoryDir(localUserName, localRepositoryName))) { git =>
+    using(JGitUtil.gitOpen(getRepositoryDir(localUserName, localRepositoryName))) { git =>
       val remoteRefName = s"refs/heads/${remoteBranch}"
       val tmpRefName = s"refs/remote-temp/${remoteUserName}/${remoteRepositoryName}/${remoteBranch}"
       val refSpec = new RefSpec(s"${remoteRefName}:${tmpRefName}").setForceUpdate(true)
@@ -177,7 +177,7 @@ trait MergeService {
     val remoteRepositoryName = remoteRepository.name
     tryMergeRemote(localUserName, localRepositoryName, localBranch, remoteUserName, remoteRepositoryName, remoteBranch).map {
       case (newTreeId, oldBaseId, oldHeadId) =>
-        using(Git.open(getRepositoryDir(localUserName, localRepositoryName))) { git =>
+        using(JGitUtil.gitOpen(getRepositoryDir(localUserName, localRepositoryName))) { git =>
           val existIds = JGitUtil.getAllCommitIds(git).toSet
 
           val committer = new PersonIdent(loginAccount.fullName, loginAccount.mailAddress)
@@ -259,7 +259,7 @@ trait MergeService {
         getPullRequest(repository.owner, repository.name, issueId)
           .map {
             case (issue, pullreq) =>
-              using(Git.open(getRepositoryDir(repository.owner, repository.name))) { git =>
+              using(JGitUtil.gitOpen(getRepositoryDir(repository.owner, repository.name))) { git =>
                 // mark issue as merged and close.
                 val commentId =
                   createComment(repository.owner, repository.name, loginAccount.userName, issueId, message, "merge")

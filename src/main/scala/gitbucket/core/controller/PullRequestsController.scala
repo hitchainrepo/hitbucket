@@ -14,7 +14,6 @@ import gitbucket.core.util.Directory._
 import gitbucket.core.util.Implicits._
 import gitbucket.core.util._
 import org.scalatra.forms._
-import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.PersonIdent
 import org.eclipse.jgit.revwalk.RevWalk
 import org.scalatra.BadRequest
@@ -270,7 +269,7 @@ trait PullRequestsControllerBase extends ControllerBase {
       } else {
         if (repository.repository.defaultBranch != pullreq.requestBranch) {
           val userName = context.loginAccount.get.userName
-          using(Git.open(getRepositoryDir(repository.owner, repository.name))) { git =>
+          using(JGitUtil.gitOpen(getRepositoryDir(repository.owner, repository.name))) { git =>
             git.branchDelete().setForce(true).setBranchNames(pullreq.requestBranch).call()
             recordDeleteBranchActivity(repository.owner, repository.name, userName, pullreq.requestBranch)
           }
@@ -312,7 +311,7 @@ trait PullRequestsControllerBase extends ControllerBase {
             } else {
               s"${pullreq.userName}:${pullreq.branch}"
             }
-          val existIds = using(Git.open(Directory.getRepositoryDir(owner, name))) { git =>
+          val existIds = using(JGitUtil.gitOpen(Directory.getRepositoryDir(owner, name))) { git =>
             JGitUtil.getAllCommitIds(git)
           }.toSet
           pullRemote(
@@ -357,8 +356,8 @@ trait PullRequestsControllerBase extends ControllerBase {
         getRepository(originUserName, originRepositoryName).map {
           originRepository =>
             using(
-              Git.open(getRepositoryDir(originUserName, originRepositoryName)),
-              Git.open(getRepositoryDir(forkedRepository.owner, forkedRepository.name))
+              JGitUtil.gitOpen(getRepositoryDir(originUserName, originRepositoryName)),
+              JGitUtil.gitOpen(getRepositoryDir(forkedRepository.owner, forkedRepository.name))
             ) { (oldGit, newGit) =>
               val newBranch = headBranch.getOrElse(JGitUtil.getDefaultBranch(newGit, forkedRepository).get._2)
               val oldBranch = originRepository.branchList
@@ -372,7 +371,7 @@ trait PullRequestsControllerBase extends ControllerBase {
         } getOrElse NotFound()
       }
       case _ => {
-        using(Git.open(getRepositoryDir(forkedRepository.owner, forkedRepository.name))) { git =>
+        using(JGitUtil.gitOpen(getRepositoryDir(forkedRepository.owner, forkedRepository.name))) { git =>
           JGitUtil.getDefaultBranch(git, forkedRepository).map {
             case (_, defaultBranch) =>
               redirect(
@@ -413,8 +412,8 @@ trait PullRequestsControllerBase extends ControllerBase {
           };
           originRepository <- getRepository(originOwner, originRepositoryName)) yield {
       using(
-        Git.open(getRepositoryDir(originRepository.owner, originRepository.name)),
-        Git.open(getRepositoryDir(forkedRepository.owner, forkedRepository.name))
+        JGitUtil.gitOpen(getRepositoryDir(originRepository.owner, originRepository.name)),
+        JGitUtil.gitOpen(getRepositoryDir(forkedRepository.owner, forkedRepository.name))
       ) {
         case (oldGit, newGit) =>
           val (oldId, newId) =
@@ -523,8 +522,8 @@ trait PullRequestsControllerBase extends ControllerBase {
           };
           originRepository <- getRepository(originOwner, originRepositoryName)) yield {
       using(
-        Git.open(getRepositoryDir(originRepository.owner, originRepository.name)),
-        Git.open(getRepositoryDir(forkedRepository.owner, forkedRepository.name))
+        JGitUtil.gitOpen(getRepositoryDir(originRepository.owner, originRepository.name)),
+        JGitUtil.gitOpen(getRepositoryDir(forkedRepository.owner, forkedRepository.name))
       ) {
         case (oldGit, newGit) =>
           val originBranch = JGitUtil.getDefaultBranch(oldGit, originRepository, tmpOriginBranch).get._2

@@ -11,7 +11,7 @@ import gitbucket.core.model.Profile.dateColumnType
 import gitbucket.core.plugin.PluginRegistry
 import gitbucket.core.service.RepositoryService.RepositoryInfo
 import gitbucket.core.util.Directory._
-import gitbucket.core.util.{FileUtil, StringUtil}
+import gitbucket.core.util.{FileUtil, JGitUtil, StringUtil}
 import org.apache.commons.io.FileUtils
 
 trait CommitsService {
@@ -106,6 +106,8 @@ trait CommitsService {
           content
         )
     }
+    // ==更新项目==
+    JGitUtil.updateProject(getRepositoryDir(repository.owner, repository.name))
 
     commentId
   }

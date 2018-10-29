@@ -45,7 +45,7 @@ trait ApiRepositoryContentsControllerBase extends ControllerBase {
       getFileList(git, revision, dirName).find(f => f.name.equals(fileName))
     }
 
-    using(Git.open(getRepositoryDir(params("owner"), params("repository")))) { git =>
+    using(JGitUtil.gitOpen(getRepositoryDir(params("owner"), params("repository")))) { git =>
       val fileList = getFileList(git, refStr, path)
       if (fileList.isEmpty) { // file or NotFound
         getFileInfo(git, refStr, path)

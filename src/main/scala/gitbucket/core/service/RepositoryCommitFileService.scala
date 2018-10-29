@@ -7,7 +7,7 @@ import gitbucket.core.plugin.PluginRegistry
 import gitbucket.core.service.WebHookService.WebHookPushPayload
 import gitbucket.core.util.Directory.getRepositoryDir
 import gitbucket.core.util.JGitUtil.CommitInfo
-import gitbucket.core.util.{JGitUtil, LockUtil}
+import gitbucket.core.util.{Directory, JGitUtil, LockUtil}
 import gitbucket.core.util.SyntaxSugars.using
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.dircache.{DirCache, DirCacheBuilder}
@@ -87,7 +87,7 @@ trait RepositoryCommitFileService {
   )(implicit s: Session, c: JsonFormat.Context) = {
 
     LockUtil.lock(s"${repository.owner}/${repository.name}") {
-      using(Git.open(getRepositoryDir(repository.owner, repository.name))) { git =>
+      using(JGitUtil.gitOpen(getRepositoryDir(repository.owner, repository.name))) { git =>
         val builder = DirCache.newInCore.builder()
         val inserter = git.getRepository.newObjectInserter()
         val headName = s"refs/heads/${branch}"
@@ -177,6 +177,8 @@ trait RepositoryCommitFileService {
               }
             }
         }
+        // ==更新项目==
+        JGitUtil.updateProject(getRepositoryDir(repository.owner, repository.name))
       }
     }
   }
