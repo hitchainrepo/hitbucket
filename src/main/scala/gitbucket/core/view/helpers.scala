@@ -425,7 +425,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    *
    * @param size total size of object in bytes
    */
-  def readableSize(size: Option[Long]): String = FileUtil.readableSize(size.getOrElse(0))
+  def readableSize(size: Option[Long]): String = FileUtil.readableSize(size.getOrElse(0).asInstanceOf[Long])
 
   /**
    * Make HTML fragment of the partial diff for a comment on a line of diff.

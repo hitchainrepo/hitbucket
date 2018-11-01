@@ -2,7 +2,7 @@ package gitbucket.core.plugin
 
 import gitbucket.core.controller.Context
 import gitbucket.core.util.SyntaxSugars.using
-import gitbucket.core.util.HttpClientUtil._
+import gitbucket.core.util.WaitToReplaceUtil
 import org.json4s._
 import org.apache.commons.io.IOUtils
 
@@ -21,7 +21,7 @@ object PluginRepository {
     try {
       val url = new java.net.URL("https://plugins.gitbucket-community.org/releases/plugins.json")
 
-      withHttpClient(context.settings.pluginProxy) { httpClient =>
+      WaitToReplaceUtil.withHttpClient(context.settings.pluginProxy) { httpClient =>
         val httpGet = new HttpGet(url.toString)
         try {
           val response = httpClient.execute(httpGet)

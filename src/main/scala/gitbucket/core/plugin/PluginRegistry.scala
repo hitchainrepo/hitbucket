@@ -18,7 +18,7 @@ import gitbucket.core.service.SystemSettingsService.SystemSettings
 import gitbucket.core.util.SyntaxSugars._
 import gitbucket.core.util.DatabaseConfig
 import gitbucket.core.util.Directory._
-import gitbucket.core.util.HttpClientUtil._
+import gitbucket.core.util.WaitToReplaceUtil
 import io.github.gitbucket.solidbase.Solidbase
 import io.github.gitbucket.solidbase.manager.JDBCVersionManager
 import io.github.gitbucket.solidbase.model.Module
@@ -255,7 +255,7 @@ object PluginRegistry {
         })
         .foreach(_.delete())
 
-      withHttpClient(settings.pluginProxy) { httpClient =>
+      WaitToReplaceUtil.withHttpClient(settings.pluginProxy) { httpClient =>
         val httpGet = new HttpGet(url.toString)
         try {
           val response = httpClient.execute(httpGet)

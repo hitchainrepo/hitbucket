@@ -302,9 +302,9 @@ trait AccountControllerBase extends AccountManagementControllerBase {
           }
           .getOrElse {
             if (account.isGroupAccount) {
-              TextAvatarUtil.textGroupAvatar(account.fullName)
+              Option.apply(TextAvatarUtil.textGroupAvatar(account.fullName))
             } else {
-              TextAvatarUtil.textAvatar(account.fullName)
+              Option.apply(TextAvatarUtil.textAvatar(account.fullName))
             }
           }
       }

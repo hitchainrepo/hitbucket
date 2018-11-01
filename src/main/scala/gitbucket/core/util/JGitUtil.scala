@@ -942,7 +942,7 @@ object JGitUtil {
         config.getSubsections("submodule").asScala.map { module =>
           val path = config.getString("submodule", module, "path")
           val url = config.getString("submodule", module, "url")
-          SubmoduleInfo(module, path, url, StringUtil.getRepositoryViewerUrl(url, baseUrl))
+          SubmoduleInfo(module, path, url, StringUtil.getRepositoryViewerUrl(url, baseUrl.get))
         }
       } catch {
         case e: ConfigInvalidException => {

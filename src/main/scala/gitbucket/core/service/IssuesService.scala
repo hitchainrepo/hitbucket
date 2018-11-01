@@ -1,5 +1,6 @@
 package gitbucket.core.service
 
+import scala.collection.JavaConverters._
 import gitbucket.core.util.JGitUtil.CommitInfo
 import gitbucket.core.util.StringUtil._
 import gitbucket.core.util.Implicits._
@@ -711,7 +712,7 @@ trait IssuesService {
   def closeIssuesFromMessage(message: String, userName: String, owner: String, repository: String)(
     implicit s: Session
   ): Seq[Int] = {
-    extractCloseId(message).flatMap { issueId =>
+    extractCloseId(message).asScala.flatMap { issueId =>
       for (issue <- getIssue(owner, repository, issueId) if !issue.closed) yield {
         createComment(owner, repository, userName, issue.issueId, "Close", "close")
         updateClosed(owner, repository, issue.issueId, true)
@@ -723,7 +724,7 @@ trait IssuesService {
   def createReferComment(owner: String, repository: String, fromIssue: Issue, message: String, loginAccount: Account)(
     implicit s: Session
   ): Unit = {
-    extractIssueId(message).foreach { issueId =>
+    extractIssueId(message).asScala.foreach { issueId =>
       val content = fromIssue.issueId + ":" + fromIssue.title
       if (getIssue(owner, repository, issueId).isDefined) {
         // Not add if refer comment already exist.
@@ -737,7 +738,7 @@ trait IssuesService {
   }
 
   def createIssueComment(owner: String, repository: String, commit: CommitInfo)(implicit s: Session): Unit = {
-    extractIssueId(commit.fullMessage).foreach { issueId =>
+    extractIssueId(commit.fullMessage).asScala.foreach { issueId =>
       if (getIssue(owner, repository, issueId).isDefined) {
         val userName =
           getAccountByMailAddress(commit.committerEmailAddress).map(_.userName).getOrElse(commit.committerName)

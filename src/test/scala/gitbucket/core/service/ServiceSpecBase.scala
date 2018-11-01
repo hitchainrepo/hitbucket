@@ -1,7 +1,7 @@
 package gitbucket.core.service
 
 import gitbucket.core.GitBucketCoreModule
-import gitbucket.core.util.{DatabaseConfig, FileUtil}
+import gitbucket.core.util.{DatabaseConfig, FileUtil, WaitToReplaceUtil}
 import gitbucket.core.util.SyntaxSugars._
 import io.github.gitbucket.solidbase.Solidbase
 import liquibase.database.core.H2Database
@@ -21,7 +21,7 @@ import scala.util.Random
 trait ServiceSpecBase {
 
   def withTestDB[A](action: (Session) => A): A = {
-    FileUtil.withTmpDir(new File(FileUtils.getTempDirectory(), Random.alphanumeric.take(10).mkString)) { dir =>
+    WaitToReplaceUtil.withTmpDir(new File(FileUtils.getTempDirectory(), Random.alphanumeric.take(10).mkString)) { dir =>
       val (url, user, pass) = (DatabaseConfig.url(Some(dir.toString)), DatabaseConfig.user, DatabaseConfig.password)
       org.h2.Driver.load()
       using(DriverManager.getConnection(url, user, pass)) { conn =>

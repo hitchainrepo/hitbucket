@@ -1,5 +1,6 @@
 package gitbucket.core.util
 
+import scala.collection.JavaConverters._
 import org.scalatest.FunSpec
 
 class StringUtilSpec extends FunSpec {
@@ -50,24 +51,24 @@ class StringUtilSpec extends FunSpec {
 
   describe("extractIssueId") {
     it("should extract '#xxx' and return extracted id") {
-      assert(StringUtil.extractIssueId("(refs #123)").toSeq == Seq("123"))
+      assert(StringUtil.extractIssueId("(refs #123)").asScala.toSeq == Seq("123"))
     }
     it("should return Nil from message which does not contain #xxx") {
-      assert(StringUtil.extractIssueId("this is test!").toSeq == Nil)
+      assert(StringUtil.extractIssueId("this is test!").asScala.toSeq == Nil)
     }
   }
 
   describe("extractCloseId") {
     it("should extract 'close #xxx' and return extracted id") {
-      assert(StringUtil.extractCloseId("(close #123)").toSeq == Seq("123"))
+      assert(StringUtil.extractCloseId("(close #123)").asScala.toSeq == Seq("123"))
     }
     it("should returns Nil from message which does not contain close command") {
-      assert(StringUtil.extractCloseId("(refs #123)").toSeq == Nil)
+      assert(StringUtil.extractCloseId("(refs #123)").asScala.toSeq == Nil)
     }
   }
 
   describe("getRepositoryViewerUrl") {
-    val baseUrl = Some("http://localhost:8080")
+    val baseUrl: String = "http://localhost:8080"
     it("should convert GitBucket repository url") {
       assert(
         StringUtil
