@@ -77,12 +77,12 @@ DAPP 把团队信息以明文方式存储到 Storage 上，每个仓库各自存
 
 索引文件结构如下：
 
-  PROJECT:projectName:hash
-  IPFS:-:url
-  RKEY:encrypt_repoPrivateKey_by_owner_pubKey:pubKey
-  OKEY:owner:pubKey
-  MKEY*:member:pubKey
-  TKEY*:encrypt_repoPrivateKey_by_member_pubKey:pubKey
+    PROJECT:projectName:hash
+    IPFS:-:url
+    RKEY:encrypt_repoPrivateKey_by_owner_pubKey:pubKey
+    OKEY:owner:pubKey
+    MKEY*:member:pubKey
+    TKEY*:encrypt_repoPrivateKey_by_member_pubKey:pubKey
 
 索引文件说明：
 - PROJECT, 项目名称：项目 HASH 地址
