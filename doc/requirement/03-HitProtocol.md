@@ -68,7 +68,29 @@ DAPP 把团队信息以明文方式存储到 Storage 上，每个仓库各自存
 
     GROUP_NAME:email:EO/ET
 
+#### 1.5. 索引文件
 
+索引文件是项目的主入口，如下图所示：
+
+![图片](https://docs.google.com/drawings/d/e/2PACX-1vS9b7t4ZW2i00kQ7v2ODtVdBTLcW4ngpkSem1iclA2jsYEX88Z9xRJ94HQvTxcnpTelkNvCdIsLM57r/pub?w=960&amp;h=720)
+[EditMe](https://docs.google.com/drawings/d/16tVCaBD9YwzhYGPQw5YgJAGxL1p5TB_WWiXZS3XEnkg/edit?usp=sharing)
+
+索引文件结构如下：
+
+  PROJECT:projectName:hash
+  IPFS:-:url
+  RKEY:encrypt_repoPrivateKey_by_owner_pubKey:pubKey
+  OKEY:owner:pubKey
+  MKEY*:member:pubKey
+  TKEY*:encrypt_repoPrivateKey_by_member_pubKey:pubKey
+
+索引文件说明：
+- PROJECT, 项目名称：项目 HASH 地址
+- IPFS, IPFS 的入口 URL，客户端的 HOST 地址
+- RKEY, 私有仓库需要此项，拥有者公钥与仓库私钥的加密结果：仓库公钥
+- OKEY, 仓库拥有者的 email：仓库拥有者的公钥
+- MKEY, 可允许多个，成员的 email：仓库成员的公钥
+- TKEY, 可允许多个，成员的公钥与仓库私钥的加密结果：成员的公钥
 
 
 
