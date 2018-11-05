@@ -72,7 +72,7 @@ DAPP 把团队信息以明文方式存储到 Storage 上，每个仓库各自存
 
 索引文件是项目的主入口，如下图所示：
 
-![图片](https://docs.google.com/drawings/d/e/2PACX-1vS9b7t4ZW2i00kQ7v2ODtVdBTLcW4ngpkSem1iclA2jsYEX88Z9xRJ94HQvTxcnpTelkNvCdIsLM57r/pub?w=960&amp;h=720)
+![图片](https://docs.google.com/drawings/d/e/2PACX-1vS9b7t4ZW2i00kQ7v2ODtVdBTLcW4ngpkSem1iclA2jsYEX88Z9xRJ94HQvTxcnpTelkNvCdIsLM57r/pub?w=562&amp;h=599)
 [EditMe](https://docs.google.com/drawings/d/16tVCaBD9YwzhYGPQw5YgJAGxL1p5TB_WWiXZS3XEnkg/edit?usp=sharing)
 
 索引文件结构如下：
