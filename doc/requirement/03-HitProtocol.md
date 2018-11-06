@@ -68,7 +68,7 @@ DAPP 把团队信息以明文方式存储到 Storage 上，每个仓库各自存
 
     GROUP_NAME:email:EO/ET
 
-#### 1.5. 索引文件
+### 1.5.索引文件
 
 索引文件是项目的主入口，如下图所示：
 
@@ -77,7 +77,7 @@ DAPP 把团队信息以明文方式存储到 Storage 上，每个仓库各自存
 
 索引文件结构如下：
 
-    PROJECT:projectName:hash
+    PROJ:projectName:hash
     IPFS:-:url
     RKEY:encrypt_repoPrivateKey_by_owner_pubKey:pubKey
     OKEY:owner:pubKey
@@ -85,13 +85,25 @@ DAPP 把团队信息以明文方式存储到 Storage 上，每个仓库各自存
     TKEY*:encrypt_repoPrivateKey_by_member_pubKey:pubKey
 
 索引文件说明：
-- PROJECT, 项目名称：项目 HASH 地址
+- PROJ, 项目名称：项目 HASH 地址，IPNS 地址
 - IPFS, IPFS 的入口 URL，客户端的 HOST 地址
 - RKEY, 私有仓库需要此项，拥有者公钥与仓库私钥的加密结果：仓库公钥
 - OKEY, 仓库拥有者的 email：仓库拥有者的公钥
 - MKEY, 可允许多个，成员的 email：仓库成员的公钥
 - TKEY, 可允许多个，成员的公钥与仓库私钥的加密结果：成员的公钥
 
+#### 1.5.1.索引文件权限
+
+只有仓库拥有者才有权更改索引文件。所有人可以读取这个文件。
+
+#### 1.5.2.索引文件使用流程
+
+GIT 仓库在创建及添加团队成员时使用：
+
+- 仓库创建时生成这个文件，公有仓库 PROJ、IPFS、OKEY 有值，私有仓库多一个 RKEY 值。
+- 添加团队成员时需要获得团队成员的 email 及公钥，并且 MKEY 有值，私有仓库还需要多一个 TKEY 值。
+- 删减团队成员时同时删除 MKEY 及 TKEY。
+- 更改仓库密钥对时，需要对整个仓库重新加密，并重置 RKEY、MKEY、TKEY。
 
 
 
