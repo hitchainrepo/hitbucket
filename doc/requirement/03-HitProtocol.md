@@ -31,6 +31,13 @@ API-C (API for client) 兼容 GIT Smart 协议，详细请参看：https://git-s
 
 API-S （API for storage）主要实现 GIT 内容存储（去中心化存储）：
 
+    ===Upload===
+    => POST add
+    => GET ls
+    => GET cat
+
+上面几个 API 参照：https://docs.ipfs.io/reference/api/http 对应的 API 。其中 POST add 应自动更新 IPNS。
+
 #### 1.3.公有仓库访问策略
 
 公有仓库（Public repository）对于访问没有权限控制，任何人都可以通过 DAPP 获得最新的仓库内容。
@@ -102,8 +109,8 @@ GIT 仓库在创建及添加团队成员时使用：
 
 - 仓库创建时生成这个文件，公有仓库 PROJ、IPFS、OKEY 有值，私有仓库多一个 RKEY 值。
 - 添加团队成员时需要获得团队成员的 email 及公钥，并且 MKEY 有值，私有仓库还需要多一个 TKEY 值。
-- 删减团队成员时同时删除 MKEY 及 TKEY。
-- 更改仓库密钥对时，需要对整个仓库重新加密，并重置 RKEY、MKEY、TKEY。
+- 删减团队成员时同时删除 MKEY 及 TKEY 值。
+- 更改仓库密钥对时，需要对整个仓库重新加密，并重置 RKEY、MKEY、TKEY 值。
 
 
 
