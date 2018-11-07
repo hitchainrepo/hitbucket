@@ -91,7 +91,7 @@
             </form>
           </div>
           @gitbucket.core.helper.html.repositoryicon(repository, true)
-          <a href="@helpers.url(repository.owner)">@repository.owner</a> / <a href="@helpers.url(repository)" class="strong">@repository.name</a>
+          <a href="@helpers.url(repository.owner)">@repository.owner</a> / <a href="@helpers.url(repository)" class="strong">@repository.name</a> 
 		  <a target="_blank" href="http://121.40.127.45:8080/ipfs/@{gitbucket.core.util.GitHelper.getHashFromFile(gitbucket.core.util.Directory.getRepositoryDir(repository.owner, repository.name).getAbsolutePath())}">http://121.40.127.45:8080/ipfs/@{gitbucket.core.util.GitHelper.getHashFromFile(gitbucket.core.util.Directory.getRepositoryDir(repository.owner, repository.name).getAbsolutePath())}</a>
           @defining(repository.repository){ x =>
             @if(repository.repository.originRepositoryName.isDefined){
