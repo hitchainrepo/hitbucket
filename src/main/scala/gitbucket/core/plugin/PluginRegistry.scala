@@ -87,7 +87,7 @@ class PluginRegistry {
   @deprecated("Use addController(path: String, controller: ControllerBase) instead", "3.4.0")
   def addController(controller: ControllerBase, path: String): Unit = addController(path, controller)
 
-  def getControllers(): Seq[(ControllerBase, String)] = controllers.asScala.toSeq
+  def getControllers(): ConcurrentLinkedQueue[(ControllerBase, String)] = controllers
 
   def addJavaScript(path: String, script: String): Unit =
     javaScripts.add((path, script)) //javaScripts += ((path, script))

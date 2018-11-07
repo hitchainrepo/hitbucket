@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -114,7 +115,7 @@ public class GitHelper {
 			List<MerkleNode> add = ipfs.add(dir);
 			String hash = add.get(add.size() - 1).hash.toBase58();
 			System.out.println("Project name: " + projectDir.getPath() + ", hash: " + urlIpfs + ":8080/ipfs/" + hash);
-			writeHashToFile(projectDir.getAbsolutePath(), "PROJ", hash);
+			writeHashToFile(projectDir.getAbsolutePath(), hash);
 			return hash;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -128,7 +129,7 @@ public class GitHelper {
 				return;
 			}
 			dir.mkdirs();
-			String hash = getHashFromFile(dir.getAbsolutePath(), "PROJ");
+			String hash = getHashFromFile(dir.getAbsolutePath());
 			String urlIpfs = System.getProperty("URL_IPFS", "http://121.40.127.45");
 			IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
 			List<MerkleNode> ls = ipfs.ls(Multihash.fromBase58(hash));
@@ -238,7 +239,7 @@ public class GitHelper {
 				.setSocketTimeout(5000).setRedirectsEnabled(true)// 默认允许自动重定向
 				.build();
 		String urlIpfs = System.getProperty("URL_IPFS", "http://121.40.127.45");
-		String uri = urlIpfs + ":8080/ipfs/" + getHashFromFile(fileName, fileType);
+		String uri = urlIpfs + ":8080/ipfs/" + getHashFromFile(fileName);
 		System.out.println("========>>> Read File=" + uri);
 		HttpGet httpGet2 = new HttpGet(uri);
 		httpGet2.setConfig(requestConfig);
@@ -265,7 +266,7 @@ public class GitHelper {
 		}
 	}
 
-	public static Map<String, Object> write(String fileName, String fileType, byte[] content) {
+	public static Map<String, Object> write(String fileName, byte[] content) {
 		// 获取可关闭的 httpCilent
 		CloseableHttpClient httpClient = HttpClients.createDefault();
 		// 配置超时时间
@@ -290,9 +291,8 @@ public class GitHelper {
 					strResult = EntityUtils.toString(httpResponse.getEntity());
 					ObjectMapper mapper = new ObjectMapper();
 					HashMap map = mapper.readValue(strResult, HashMap.class);
-					writeHashToFile(fileName, fileType, (String) map.get("Hash"));
-					System.out.println(
-							"========>>> Write File=" + fileName + ", Type=" + fileType + ", Hash=" + map.get("Hash"));
+					writeHashToFile(fileName, (String) map.get("Hash"));
+					System.out.println("========>>> Write File=" + fileName + ", Hash=" + map.get("Hash"));
 				} else if (httpResponse.getStatusLine().getStatusCode() == 400) {
 					strResult = "Error Response: " + httpResponse.getStatusLine().toString();
 				} else if (httpResponse.getStatusLine().getStatusCode() == 500) {
@@ -317,38 +317,89 @@ public class GitHelper {
 		return null;
 	}
 
-	public static void writeHashToFile(String fileName, String fileType, String hash) {
-		String file = System.getProperty("HASH_FILE", "/Users/zhaochen/Desktop/hashFile.txt");
+	public static void writeHashToFile(String fileName, String hash) {
+		String file = System.getProperty("HASH_FILE", "/Users/zhaochen/Desktop/hashFile");
 		try {
-			File hashFile = new File(file);
-			if (!hashFile.exists()) {
-				hashFile.getParentFile().mkdirs();
-				hashFile.createNewFile();
+			File hashFileDir = new File(file);
+			if (!hashFileDir.exists()) {
+				hashFileDir.mkdirs();
 			}
-			FileUtils.write(hashFile, fileType + "," + fileName + "," + hash + "\n", Charset.forName("UTF-8"), true);
+			String[] pathSplit = StringUtils.split(fileName, StringUtils.contains(fileName, '/') ? '/' : '\\');
+			String hexHash = Hex.encodeHexString(
+					(pathSplit[pathSplit.length - 2] + "@" + pathSplit[pathSplit.length - 1]).getBytes());
+			File indexFile = new File(hashFileDir, hexHash);
+			if (!indexFile.exists()) {
+				indexFile.createNewFile();
+				FileUtils.write(indexFile, "PROJ:"
+						+ (pathSplit[pathSplit.length - 2] + "@" + pathSplit[pathSplit.length - 1]) + ":" + hash + "\n",
+						Charset.forName("UTF-8"), true);
+				return;
+			}
+			String content = FileUtils.readFileToString(indexFile, "UTF-8");
+			String[] lines = StringUtils.split(content, '\n');
+			StringBuilder sb = new StringBuilder();
+			for (String line : lines) {
+				String[] split = StringUtils.split(line, ':');
+				if (split.length != 3) {
+					continue;
+				}
+				String type = split[0], value1 = split[1], value2 = split[2];
+				// PROJ:projectName:hash
+				// IPFS:-:url
+				// RKEY:encrypt_repoPrivateKey_by_owner_pubKey:pubKey
+				// OKEY:owner:pubKey
+				// MKEY*:member:pubKey
+				// TKEY*:encrypt_repoPrivateKey_by_member_pubKey:pubKey
+				if ("PROJ".equals(type)) {
+					sb.append(type).append(':').append(value1).append(':').append(hash).append('\n');
+				} else if ("IPFS".equals(type)) {
+					sb.append(type).append(':').append(value1).append(':').append(value2).append('\n');
+				} else if ("RKEY".equals(type)) {
+					sb.append(type).append(':').append(value1).append(':').append(value2).append('\n');
+				} else if ("OKEY".equals(type)) {
+					sb.append(type).append(':').append(value1).append(':').append(value2).append('\n');
+				} else if ("MKEY".equals(type)) {
+					sb.append(type).append(':').append(value1).append(':').append(value2).append('\n');
+				} else if ("TKEY".equals(type)) {
+					sb.append(type).append(':').append(value1).append(':').append(value2).append('\n');
+				}
+			}
+			FileUtils.write(indexFile, sb.toString(), Charset.forName("UTF-8"), true);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
 
-	public static String getHashFromFile(String fileName, String fileType) {
-		String file = System.getProperty("HASH_FILE", "/Users/zhaochen/Desktop/hashFile.txt");
+	public static String getHashFromFile(String fileName) {
 		try {
-			File hashFile = new File(file);
-			if (!hashFile.exists()) {
-				hashFile.getParentFile().mkdirs();
-				hashFile.createNewFile();
+			String file = System.getProperty("HASH_FILE", "/Users/zhaochen/Desktop/hashFile");
+			File hashFileDir = new File(file);
+			if (!hashFileDir.exists()) {
+				hashFileDir.mkdirs();
 			}
-			String content = FileUtils.readFileToString(hashFile, "UTF-8");
+			String[] pathSplit = StringUtils.split(fileName, StringUtils.contains(fileName, '/') ? '/' : '\\');
+			String hexHash = Hex.encodeHexString(
+					(pathSplit[pathSplit.length - 2] + "@" + pathSplit[pathSplit.length - 1]).getBytes());
+			File indexFile = new File(hashFileDir, hexHash);
+			if(!indexFile.exists()) {
+				return "";
+			}
+			String content = FileUtils.readFileToString(indexFile, "UTF-8");
 			String[] lines = StringUtils.split(content, '\n');
-			ArrayUtils.reverse(lines);
 			for (String line : lines) {
-				String[] split = StringUtils.split(line, ",");
+				String[] split = StringUtils.split(line, ':');
 				if (split.length != 3) {
 					continue;
 				}
-				if (split[0].equals(fileType) && split[1].equals(fileName)) {
-					return split[2];
+				String type = split[0], value1 = split[1], value2 = split[2];
+				// PROJ:projectName:hash
+				// IPFS:-:url
+				// RKEY:encrypt_repoPrivateKey_by_owner_pubKey:pubKey
+				// OKEY:owner:pubKey
+				// MKEY*:member:pubKey
+				// TKEY*:encrypt_repoPrivateKey_by_member_pubKey:pubKey
+				if ("PROJ".equals(type)) {
+					return value2;
 				}
 			}
 		} catch (Exception e) {
