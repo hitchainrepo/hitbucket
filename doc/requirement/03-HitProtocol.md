@@ -110,8 +110,19 @@ GIT 仓库在创建及添加团队成员时使用：
 - 删减团队成员时同时删除 MKEY 及 TKEY 值。
 - 更改仓库密钥对时，需要对整个仓库重新加密，并重置 RKEY、MKEY、TKEY 值。
 
+### 1.5. 索引文件与 DAPP
 
+索引文件与 DAPP 入口如下：
 
+![图片](https://docs.google.com/drawings/d/e/2PACX-1vRfc6wlcWSTWdY5Af8TaIxLI3hDH0U3l-zogH_i6m_uWbdxua5o1jfDQdnF29oR4hvNrXJcnNB3op4V/pub?w=633&amp;h=694)
+[EditMe](https://docs.google.com/drawings/d/1qI19hS86AhF85HkpJiRAKUqALae2T0T7w-HsURGcBls/edit?usp=sharing)
+
+DAPP的作用就是维护索引文件，确保索引文件的更新是合法的完整的，同时向成员提供索引中公开的信息。
+
+使用流程说明：
+- 创建项目，创建的同时也是建立 DAPP 时，包括初始的项目地址，及必要的索引信息
+- 拉取项目，客户端先从 DAPP 中获得最新的项目地址及必要的索引信息，然后再从 D-Storage 中拉取内容，如果是私有仓库还需要对内容解密
+- 更新项目，客户端先从 DAPP 中获得必要的索引信息，把内容更新到 D-Storage 中，然后再通过 D-APP 更新索引信息，如果是私有仓库则需要先加密后传输
 
 
 
