@@ -51,7 +51,7 @@ trait ApiPullRequestControllerBase extends ControllerBase {
           baseRepo = ApiRepository(repository, ApiUser(baseOwner)),
           user = ApiUser(issueUser),
           labels = getIssueLabels(repository.owner, repository.name, issue.issueId)
-            .map(ApiLabel(_, RepositoryName(repository))),
+            .map(ApiLabel(_, new RepositoryName(repository))),
           assignee = assignee.map(ApiUser.apply),
           mergedComment = getMergedComment(repository.owner, repository.name, issue.issueId)
         )
@@ -89,7 +89,7 @@ trait ApiPullRequestControllerBase extends ControllerBase {
           baseRepo = ApiRepository(repository, ApiUser(baseOwner)),
           user = ApiUser(issueUser),
           labels = getIssueLabels(repository.owner, repository.name, issue.issueId)
-            .map(ApiLabel(_, RepositoryName(repository))),
+            .map(ApiLabel(_, new RepositoryName(repository))),
           assignee = assignee.map(ApiUser.apply),
           mergedComment = getMergedComment(repository.owner, repository.name, issue.issueId)
         )
@@ -124,7 +124,7 @@ trait ApiPullRequestControllerBase extends ControllerBase {
             using(JGitUtil.gitOpen(getRepositoryDir(owner, name))) { git =>
               val oldId = git.getRepository.resolve(pullreq.commitIdFrom)
               val newId = git.getRepository.resolve(pullreq.commitIdTo)
-              val repoFullName = RepositoryName(repository)
+              val repoFullName = new RepositoryName(repository)
               val commits = git.log
                 .addRange(oldId, newId)
                 .call

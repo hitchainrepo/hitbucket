@@ -42,10 +42,10 @@ trait ApiIssueControllerBase extends ControllerBase {
       case (issue, issueUser) =>
         ApiIssue(
           issue = issue,
-          repositoryName = RepositoryName(repository),
+          repositoryName = new RepositoryName(repository),
           user = ApiUser(issueUser),
           labels = getIssueLabels(repository.owner, repository.name, issue.issueId)
-            .map(ApiLabel(_, RepositoryName(repository)))
+            .map(ApiLabel(_, new RepositoryName(repository)))
         )
     })
   })
@@ -63,9 +63,10 @@ trait ApiIssueControllerBase extends ControllerBase {
       JsonFormat(
         ApiIssue(
           issue,
-          RepositoryName(repository),
+          new RepositoryName(repository),
           ApiUser(openedUser),
-          getIssueLabels(repository.owner, repository.name, issue.issueId).map(ApiLabel(_, RepositoryName(repository)))
+          getIssueLabels(repository.owner, repository.name, issue.issueId)
+            .map(ApiLabel(_, new RepositoryName(repository)))
         )
       )
     }) getOrElse NotFound()
@@ -95,10 +96,10 @@ trait ApiIssueControllerBase extends ControllerBase {
         JsonFormat(
           ApiIssue(
             issue,
-            RepositoryName(repository),
+            new RepositoryName(repository),
             ApiUser(loginAccount),
             getIssueLabels(repository.owner, repository.name, issue.issueId)
-              .map(ApiLabel(_, RepositoryName(repository)))
+              .map(ApiLabel(_, new RepositoryName(repository)))
           )
         )
       }) getOrElse NotFound()

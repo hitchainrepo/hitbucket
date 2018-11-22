@@ -88,14 +88,14 @@ trait ApiRepositoryContentsControllerBase extends ControllerBase {
                 }
               }
               case _ =>
-                Some(JsonFormat(ApiContents(f, RepositoryName(repository), content)))
+                Some(JsonFormat(ApiContents(f, new RepositoryName(repository), content)))
             }
           }
           .getOrElse(NotFound())
 
       } else { // directory
         JsonFormat(fileList.map { f =>
-          ApiContents(f, RepositoryName(repository), None)
+          ApiContents(f, new RepositoryName(repository), None)
         })
       }
     }

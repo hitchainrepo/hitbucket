@@ -19,7 +19,7 @@ trait ApiIssueLabelControllerBase extends ControllerBase {
    */
   get("/api/v3/repos/:owner/:repository/labels")(referrersOnly { repository =>
     JsonFormat(getLabels(repository.owner, repository.name).map { label =>
-      ApiLabel(label, RepositoryName(repository))
+      ApiLabel(label, new RepositoryName(repository))
     })
   })
 
@@ -29,7 +29,7 @@ trait ApiIssueLabelControllerBase extends ControllerBase {
    */
   get("/api/v3/repos/:owner/:repository/labels/:labelName")(referrersOnly { repository =>
     getLabel(repository.owner, repository.name, params("labelName")).map { label =>
-      JsonFormat(ApiLabel(label, RepositoryName(repository)))
+      JsonFormat(ApiLabel(label, new RepositoryName(repository)))
     } getOrElse NotFound()
   })
 
@@ -41,11 +41,11 @@ trait ApiIssueLabelControllerBase extends ControllerBase {
     (for {
       data <- extractFromJsonBody[CreateALabel] if data.isValid
     } yield {
-      LockUtil.lock(RepositoryName(repository).fullName) {
+      LockUtil.lock(new RepositoryName(repository).fullName) {
         if (getLabel(repository.owner, repository.name, data.name).isEmpty) {
           val labelId = createLabel(repository.owner, repository.name, data.name, data.color)
           getLabel(repository.owner, repository.name, labelId).map { label =>
-            Created(JsonFormat(ApiLabel(label, RepositoryName(repository))))
+            Created(JsonFormat(ApiLabel(label, new RepositoryName(repository))))
           } getOrElse NotFound()
         } else {
           // TODO ApiError should support errors field to enhance compatibility of GitHub API
@@ -68,7 +68,7 @@ trait ApiIssueLabelControllerBase extends ControllerBase {
     (for {
       data <- extractFromJsonBody[CreateALabel] if data.isValid
     } yield {
-      LockUtil.lock(RepositoryName(repository).fullName) {
+      LockUtil.lock(new RepositoryName(repository).fullName) {
         getLabel(repository.owner, repository.name, params("labelName")).map {
           label =>
             if (getLabel(repository.owner, repository.name, data.name).isEmpty) {
@@ -76,7 +76,7 @@ trait ApiIssueLabelControllerBase extends ControllerBase {
               JsonFormat(
                 ApiLabel(
                   getLabel(repository.owner, repository.name, label.labelId).get,
-                  RepositoryName(repository)
+                  new RepositoryName(repository)
                 )
               )
             } else {
@@ -98,7 +98,7 @@ trait ApiIssueLabelControllerBase extends ControllerBase {
    * https://developer.github.com/v3/issues/labels/#delete-a-label
    */
   delete("/api/v3/repos/:owner/:repository/labels/:labelName")(writableUsersOnly { repository =>
-    LockUtil.lock(RepositoryName(repository).fullName) {
+    LockUtil.lock(new RepositoryName(repository).fullName) {
       getLabel(repository.owner, repository.name, params("labelName")).map { label =>
         deleteLabel(repository.owner, repository.name, label.labelId)
         NoContent()

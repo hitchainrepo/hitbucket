@@ -325,10 +325,10 @@ trait WebHookPullRequestService extends WebHookService {
           repository = ApiRepository(repository, ApiUser(repoOwner)),
           issue = ApiIssue(
             issue,
-            RepositoryName(repository),
+            new RepositoryName(repository),
             ApiUser(issueUser),
             getIssueLabels(repository.owner, repository.name, issue.issueId)
-              .map(ApiLabel(_, RepositoryName(repository)))
+              .map(ApiLabel(_, new RepositoryName(repository)))
           ),
           sender = ApiUser(sender)
         )
@@ -358,7 +358,7 @@ trait WebHookPullRequestService extends WebHookService {
         }
         headRepo <- getRepository(pullRequest.requestUserName, pullRequest.requestRepositoryName)
         labels = getIssueLabels(repository.owner, repository.name, issue.issueId)
-          .map(ApiLabel(_, RepositoryName(repository)))
+          .map(ApiLabel(_, new RepositoryName(repository)))
       } yield {
         WebHookPullRequestPayload(
           action = action,
@@ -416,7 +416,7 @@ trait WebHookPullRequestService extends WebHookService {
       }
       baseRepo <- getRepository(pullRequest.userName, pullRequest.repositoryName)
       labels = getIssueLabels(pullRequest.userName, pullRequest.repositoryName, issue.issueId)
-        .map(ApiLabel(_, RepositoryName(pullRequest.userName, pullRequest.repositoryName)))
+        .map(ApiLabel(_, new RepositoryName(pullRequest.userName, pullRequest.repositoryName)))
     } yield {
       val payload = WebHookPullRequestPayload(
         action = action,
@@ -462,7 +462,7 @@ trait WebHookPullRequestReviewCommentService extends WebHookService {
         }
         headRepo <- getRepository(pullRequest.requestUserName, pullRequest.requestRepositoryName)
         labels = getIssueLabels(pullRequest.userName, pullRequest.repositoryName, issue.issueId)
-          .map(ApiLabel(_, RepositoryName(pullRequest.userName, pullRequest.repositoryName)))
+          .map(ApiLabel(_, new RepositoryName(pullRequest.userName, pullRequest.repositoryName)))
       } yield {
         WebHookPullRequestReviewCommentPayload(
           action = action,
@@ -597,7 +597,7 @@ object WebHookService {
         before = ObjectId.toString(oldId),
         after = ObjectId.toString(newId),
         commits = commits.map { commit =>
-          ApiCommit.forWebhookPayload(git, RepositoryName(repositoryInfo), commit)
+          ApiCommit.forWebhookPayload(git, new RepositoryName(repositoryInfo), commit)
         },
         repository = ApiRepository.forWebhookPayload(repositoryInfo, owner = ApiUser(repositoryOwner))
       )
@@ -697,12 +697,12 @@ object WebHookService {
         repository = ApiRepository(repository, repositoryUser),
         issue = ApiIssue(
           issue,
-          RepositoryName(repository),
+          new RepositoryName(repository),
           ApiUser(issueUser),
-          labels.map(ApiLabel(_, RepositoryName(repository)))
+          labels.map(ApiLabel(_, new RepositoryName(repository)))
         ),
         comment =
-          ApiComment(comment, RepositoryName(repository), issue.issueId, ApiUser(commentUser), issue.isPullRequest),
+          ApiComment(comment, new RepositoryName(repository), issue.issueId, ApiUser(commentUser), issue.isPullRequest),
         sender = ApiUser(sender)
       )
   }
@@ -741,7 +741,7 @@ object WebHookService {
         comment = ApiPullRequestReviewComment(
           comment = comment,
           commentedUser = senderPayload,
-          repositoryName = RepositoryName(baseRepository),
+          repositoryName = new RepositoryName(baseRepository),
           issueId = issue.issueId
         ),
         pull_request = ApiPullRequest(
@@ -800,7 +800,7 @@ object WebHookService {
               page_name = pageName,
               title = pageName,
               sha = sha,
-              html_url = ApiPath(s"/${RepositoryName(repository).fullName}/wiki/${StringUtil.urlDecode(pageName)}")
+              html_url = ApiPath(s"/${new RepositoryName(repository).fullName}/wiki/${StringUtil.urlDecode(pageName)}")
             )
         },
         repository = ApiRepository(repository, repositoryUser),

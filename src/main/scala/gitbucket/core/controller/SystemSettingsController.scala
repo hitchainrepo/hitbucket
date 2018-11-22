@@ -319,8 +319,8 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
         to = form.testAddress,
         subject = "Test message from GitBucket",
         textMsg = "This is a test message from GitBucket.",
-        htmlMsg = None,
-        loginAccount = context.loginAccount
+        htmlMsg = null,
+        loginAccount = context.loginAccount.get
       )
 
       "Test mail has been sent to: " + form.testAddress

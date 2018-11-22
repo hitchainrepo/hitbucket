@@ -11,6 +11,7 @@ import gitbucket.core.service.RepositoryService.RepositoryInfo
 import gitbucket.core.service.{RepositoryService, RequestCache}
 import gitbucket.core.util.{FileUtil, JGitUtil, StringUtil}
 import play.twirl.api.{Html, HtmlFormat}
+import scala.collection.JavaConverters._
 
 /**
  * Provides helper methods for Twirl templates.
@@ -142,7 +143,16 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
     val extension = FileUtil.getExtension(fileName)
     val renderer = PluginRegistry().getRenderer(extension)
     renderer.render(
-      RenderRequest(filePath, fileContent, branch, repository, enableWikiLink, enableRefsLink, enableAnchor, context)
+      new RenderRequest(
+        filePath.asJava,
+        fileContent,
+        branch,
+        repository,
+        enableWikiLink,
+        enableRefsLink,
+        enableAnchor,
+        context
+      )
     )
   }
 

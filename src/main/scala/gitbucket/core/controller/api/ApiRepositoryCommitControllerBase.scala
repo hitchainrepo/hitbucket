@@ -36,7 +36,7 @@ trait ApiRepositoryCommitControllerBase extends ControllerBase {
 
         JsonFormat(
           ApiCommits(
-            repositoryName = RepositoryName(repository),
+            repositoryName = new RepositoryName(repository),
             commitInfo = commitInfo,
             diffs = JGitUtil.getDiffs(git, commitInfo.parents.headOption, commitInfo.id, false, true),
             author = getAccount(commitInfo.authorName, commitInfo.authorEmailAddress),

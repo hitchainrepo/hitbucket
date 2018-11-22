@@ -33,5 +33,5 @@ object ApiCommitStatus {
       id = status.commitStatusId,
       context = status.context,
       creator = creator
-    )(status.commitId, RepositoryName(status))
+    )(status.commitId, new RepositoryName(status))
 }

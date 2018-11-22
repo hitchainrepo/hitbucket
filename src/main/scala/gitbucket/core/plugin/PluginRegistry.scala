@@ -37,8 +37,8 @@ class PluginRegistry {
   private val controllers = new ConcurrentLinkedQueue[(ControllerBase, String)]
   private val images = new ConcurrentHashMap[String, String]
   private val renderers = new ConcurrentHashMap[String, Renderer]
-  renderers.put("md", MarkdownRenderer)
-  renderers.put("markdown", MarkdownRenderer)
+  renderers.put("md", MarkdownRenderer.INSTANCE)
+  renderers.put("markdown", MarkdownRenderer.INSTANCE)
   private val repositoryRoutings = new ConcurrentLinkedQueue[GitRepositoryRouting]
   private val accountHooks = new ConcurrentLinkedQueue[AccountHook]
   private val receiveHooks = new ConcurrentLinkedQueue[ReceiveHook]
@@ -97,7 +97,7 @@ class PluginRegistry {
 
   def addRenderer(extension: String, renderer: Renderer): Unit = renderers.put(extension, renderer)
 
-  def getRenderer(extension: String): Renderer = renderers.asScala.getOrElse(extension, DefaultRenderer)
+  def getRenderer(extension: String): Renderer = renderers.asScala.getOrElse(extension, DefaultRenderer.INSTANCE)
 
   def renderableExtensions: Seq[String] = renderers.keys.asScala.toSeq
 

@@ -53,7 +53,7 @@ trait ApiRepositoryBranchControllerBase extends ControllerBase {
     } yield {
       val protection = getProtectedBranchInfo(repository.owner, repository.name, branch)
       JsonFormat(
-        ApiBranch(branch, ApiBranchCommit(br.commitId), ApiBranchProtection(protection))(RepositoryName(repository))
+        ApiBranch(branch, ApiBranchCommit(br.commitId), ApiBranchProtection(protection))(new RepositoryName(repository))
       )
     }) getOrElse NotFound()
   })
@@ -230,7 +230,7 @@ trait ApiRepositoryBranchControllerBase extends ControllerBase {
       } else {
         disableBranchProtection(repository.owner, repository.name, branch)
       }
-      JsonFormat(ApiBranch(branch, ApiBranchCommit(br.commitId), protection)(RepositoryName(repository)))
+      JsonFormat(ApiBranch(branch, ApiBranchCommit(br.commitId), protection)(new RepositoryName(repository)))
     }) getOrElse NotFound()
   })
 }

@@ -20,7 +20,7 @@ class JsonFormatSpec extends FunSuite {
     f.parse(date)
   }
   val sha1 = "6dcb09b5b57875f334f61aebed695e2e4193db5e"
-  val repo1Name = RepositoryName("octocat/Hello-World")
+  val repo1Name = new RepositoryName("octocat/Hello-World")
   implicit val context = JsonFormat.Context("http://gitbucket.exmple.com", None)
 
   val apiUser =
@@ -38,7 +38,7 @@ class JsonFormatSpec extends FunSuite {
   }"""
 
   val repository = ApiRepository(
-    name = repo1Name.name,
+    name = repo1Name.getName,
     full_name = repo1Name.fullName,
     description = "This your first repo!",
     watchers = 0,
@@ -96,7 +96,7 @@ class JsonFormatSpec extends FunSuite {
     modified = List("README.md"),
     author = ApiPersonIdent("baxterthehacker", "baxterthehacker@users.noreply.github.com", date1),
     committer = ApiPersonIdent("baxterthehacker", "baxterthehacker@users.noreply.github.com", date1)
-  )(RepositoryName("baxterthehacker", "public-repo"), true)
+  )(new RepositoryName("baxterthehacker", "public-repo"), true)
   val apiPushCommitJson = s"""{
       "id": "0d1a26e67d8f5eaf1f6ba5c57fc3c7d91ac0fd1c",
       // "distinct": true,
@@ -127,7 +127,7 @@ class JsonFormatSpec extends FunSuite {
     }"""
 
   val apiComment = ApiComment(id = 1, user = apiUser, body = "Me too", created_at = date1, updated_at = date1)(
-    RepositoryName("octocat", "Hello-World"),
+    new RepositoryName("octocat", "Hello-World"),
     100,
     false
   )
@@ -141,7 +141,7 @@ class JsonFormatSpec extends FunSuite {
   }"""
 
   val apiCommentPR = ApiComment(id = 1, user = apiUser, body = "Me too", created_at = date1, updated_at = date1)(
-    RepositoryName("octocat", "Hello-World"),
+    new RepositoryName("octocat", "Hello-World"),
     100,
     true
   )
@@ -207,7 +207,7 @@ class JsonFormatSpec extends FunSuite {
     "url": "${context.baseUrl}/api/v3/repos/octocat/Hello-World/commits/$sha1/status"
   }"""
 
-  val apiLabel = ApiLabel(name = "bug", color = "f29513")(RepositoryName("octocat", "Hello-World"))
+  val apiLabel = ApiLabel(name = "bug", color = "f29513")(new RepositoryName("octocat", "Hello-World"))
   val apiLabelJson = s"""{
     "name": "bug",
     "color": "f29513",
@@ -223,7 +223,7 @@ class JsonFormatSpec extends FunSuite {
     body = "I'm having a problem with this.",
     created_at = date1,
     updated_at = date1
-  )(RepositoryName("octocat", "Hello-World"), false)
+  )(new RepositoryName("octocat", "Hello-World"), false)
   val apiIssueJson = s"""{
     "number": 1347,
     "state": "open",
@@ -247,7 +247,7 @@ class JsonFormatSpec extends FunSuite {
     body = "I'm having a problem with this.",
     created_at = date1,
     updated_at = date1
-  )(RepositoryName("octocat", "Hello-World"), true)
+  )(new RepositoryName("octocat", "Hello-World"), true)
   val apiIssuePRJson = s"""{
     "number": 1347,
     "state": "open",
@@ -348,7 +348,7 @@ class JsonFormatSpec extends FunSuite {
     body = "Maybe you should use more emoji on this line.",
     created_at = date("2015-05-05T23:40:27Z"),
     updated_at = date("2015-05-05T23:40:27Z")
-  )(RepositoryName("baxterthehacker/public-repo"), 1)
+  )(new RepositoryName("baxterthehacker/public-repo"), 1)
   val apiPullRequestReviewCommentJson = s"""{
     "url": "http://gitbucket.exmple.com/api/v3/repos/baxterthehacker/public-repo/pulls/comments/29724692",
     "id": 29724692,

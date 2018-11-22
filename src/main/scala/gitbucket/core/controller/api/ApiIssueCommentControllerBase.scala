@@ -24,7 +24,7 @@ trait ApiIssueCommentControllerBase extends ControllerBase {
     } yield {
       JsonFormat(comments.map {
         case (issueComment, user, issue) =>
-          ApiComment(issueComment, RepositoryName(repository), issueId, ApiUser(user), issue.isPullRequest)
+          ApiComment(issueComment, new RepositoryName(repository), issueId, ApiUser(user), issue.isPullRequest)
       })
     }) getOrElse NotFound()
   })
@@ -55,7 +55,7 @@ trait ApiIssueCommentControllerBase extends ControllerBase {
       JsonFormat(
         ApiComment(
           issueComment,
-          RepositoryName(repository),
+          new RepositoryName(repository),
           issueId,
           ApiUser(context.loginAccount.get),
           issue.isPullRequest
