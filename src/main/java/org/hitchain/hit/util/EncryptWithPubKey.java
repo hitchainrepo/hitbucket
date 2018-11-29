@@ -27,6 +27,7 @@ import java.security.spec.ECPrivateKeySpec;
 import java.security.spec.EllipticCurve;
 
 
+@Deprecated
 public class EncryptWithPubKey {
 
     public static void main(String[] args) throws NoSuchProviderException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchPaddingException, InvalidKeyException, IOException {

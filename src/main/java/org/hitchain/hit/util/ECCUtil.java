@@ -1,5 +1,6 @@
 package org.hitchain.hit.util;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.bouncycastle.asn1.sec.SECNamedCurves;
 import org.bouncycastle.asn1.x9.X9ECParameters;
@@ -10,6 +11,10 @@ import org.bouncycastle.jce.spec.ECNamedCurveSpec;
 import org.bouncycastle.util.encoders.Hex;
 
 import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.math.BigInteger;
 import java.security.*;
 import java.security.spec.*;
@@ -85,11 +90,32 @@ public class ECCUtil {
         return bytes;
     }
 
+    //公钥加密
+    public static byte[] publicEncrypt(InputStream is, PublicKey publicKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("ECIES", "BC");
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        CipherOutputStream cos = new CipherOutputStream(baos, cipher);
+        IOUtils.copy(is, cos);
+        cos.close();
+        return baos.toByteArray();
+    }
+
     //私钥解密
     public static byte[] privateDecrypt(byte[] content, PrivateKey privateKey) throws Exception {
         Cipher cipher = Cipher.getInstance("ECIES", "BC");
         cipher.init(Cipher.DECRYPT_MODE, privateKey);
         byte[] bytes = cipher.doFinal(content);
+        return bytes;
+    }
+
+    //私钥解密
+    public static byte[] privateDecrypt(InputStream is, PrivateKey privateKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("ECIES", "BC");
+        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+        CipherInputStream cis = new CipherInputStream(is, cipher);
+        byte[] bytes = IOUtils.toByteArray(cis);
+        cis.close();
         return bytes;
     }
 
@@ -105,7 +131,11 @@ public class ECCUtil {
         }
     }
 
-    public static PublicKey getPublicKeyFromECBigIntAndCurve(ECPoint s) {
+    public static PrivateKey getPrivateKeyFromEthereumHex(String hex) {
+        return getPrivateKeyFromECBigIntAndCurve(new BigInteger(hex, 16));
+    }
+
+    public static PublicKey getPublicKeyFromECBigInt(ECPoint s) {
         ECParameterSpec ecParameterSpec = new ECNamedCurveSpec("secp256k1", CURVE.getCurve(), CURVE.getG(), CURVE.getN(), CURVE.getH(), CURVE.getSeed());
         ECPublicKeySpec publicKeySpec = new ECPublicKeySpec(s, ecParameterSpec);
         try {
@@ -117,10 +147,26 @@ public class ECCUtil {
         }
     }
 
+    public static PublicKey getPublicKeyFromECBigInt(BigInteger xCoord, BigInteger yCoord) {
+        return getPublicKeyFromECBigInt(new ECPoint(xCoord, yCoord));
+    }
+
+    public static PublicKey getPublicKeyFromEthereumPrivateKeyHex(String privateKeyHex) {
+        ECKey key = ECKey.fromPrivate(Hex.decode(privateKeyHex));
+        org.bouncycastle.math.ec.ECPoint point = key.getPubKeyPoint();
+        return getPublicKeyFromECBigInt(point.getXCoord().toBigInteger(), point.getYCoord().toBigInteger());
+    }
+
+    public static PublicKey getPublicKeyFromEthereumPublicKeyHex(String publicKeyHex) {
+        ECKey key = ECKey.fromPublicOnly(Hex.decode(publicKeyHex));
+        org.bouncycastle.math.ec.ECPoint point = key.getPubKeyPoint();
+        return getPublicKeyFromECBigInt(point.getXCoord().toBigInteger(), point.getYCoord().toBigInteger());
+    }
+
     public static void main(String[] args) throws Exception {
         ECKey key = new ECKey();
         org.bouncycastle.math.ec.ECPoint point = key.getPubKeyPoint();
-        PublicKey pubKey = getPublicKeyFromECBigIntAndCurve(new ECPoint(point.getXCoord().toBigInteger(), point.getYCoord().toBigInteger()));
+        PublicKey pubKey = getPublicKeyFromECBigInt(point.getXCoord().toBigInteger(), point.getYCoord().toBigInteger());
         System.out.println(Hex.toHexString(pubKey.getEncoded()));
         PrivateKey priKey = getPrivateKeyFromECBigIntAndCurve(key.getPrivKey());
         System.out.println(Hex.toHexString(priKey.getEncoded()));
@@ -146,7 +192,7 @@ public class ECCUtil {
         System.out.println(ECKey.fromPrivate(pair.getPrivate().getEncoded()).getPrivKey().toString(16));
         System.out.println("---");
         org.bouncycastle.math.ec.ECPoint point = key.getPubKeyPoint();
-        PublicKey pk = getPublicKeyFromECBigIntAndCurve(new ECPoint(point.getXCoord().toBigInteger(), point.getYCoord().toBigInteger()));
+        PublicKey pk = getPublicKeyFromECBigInt(new ECPoint(point.getXCoord().toBigInteger(), point.getYCoord().toBigInteger()));
         System.out.println(Hex.toHexString(pk.getEncoded()));
         System.out.println(Hex.toHexString(getPrivateKeyFromECBigIntAndCurve(key.getPrivKey()).getEncoded()));
         System.out.println("====");

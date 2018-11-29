@@ -27,7 +27,7 @@ public class IndexFile {
     private String projectHash;
     private String ipfsUrl;
     private String repositoryPrivateKeyEncrypted;
-    private String repositoryPublicKey;
+    private String repositoryPublicKey;//Ethereum account address
     private String owner;
     private String ownerPublicKey;
     private Map<String/*member*/, String/*memberPublicKey*/> memberKeys = new HashMap<>();
@@ -84,6 +84,10 @@ public class IndexFile {
         //#2. repositoryPrivateKey + memberPublicKey = ET
         getMemberKeys().put(memberName, memberPublicKey);
         getMemberRepositoryKeys().put(memberPublicKey, "ET");
+    }
+
+    public boolean isPrivate() {
+        return StringUtils.isNotBlank(getRepositoryPrivateKeyEncrypted());
     }
 
     public HashedFile getFile() {

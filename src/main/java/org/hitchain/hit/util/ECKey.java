@@ -99,7 +99,6 @@ public class ECKey implements Serializable {
     public static final BigInteger HALF_CURVE_ORDER;
     private static final Logger logger = LoggerFactory.getLogger(ECKey.class);
     private static final SecureRandom secureRandom;
-    private static final long serialVersionUID = -728224901792295832L;
 
     static {
         // All clients must agree on the curve to use by agreement. Ethereum uses secp256k1.
