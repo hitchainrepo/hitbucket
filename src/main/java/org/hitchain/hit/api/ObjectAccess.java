@@ -8,6 +8,8 @@
  ******************************************************************************/
 package org.hitchain.hit.api;
 
+import java.io.InputStream;
+
 /**
  * ObjectAccess
  *
@@ -16,5 +18,9 @@ package org.hitchain.hit.api;
  * auto generate by qdp.
  */
 public interface ObjectAccess {
+    InputStream get(String objectHash);
 
+    InputStream ls(String objectHash);
+
+    InputStream post(HashedFile files);
 }
