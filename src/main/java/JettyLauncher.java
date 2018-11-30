@@ -117,7 +117,7 @@ public class JettyLauncher {
             // TODO IDEA
             // path = StringUtils.substringBefore(path, "target") + "target";
             // TODO for Eclipse
-            path = path.substring(0, path.indexOf("gitbucket")) + "gitbucket/target";
+            path = path.substring(0, path.indexOf("hitbucket")) + "hitbucket/target";
             context.setDescriptor(path + "/webapp/WEB-INF/web.xml");
             context.setServer(server);
             context.setWar(path + "/webapp");
