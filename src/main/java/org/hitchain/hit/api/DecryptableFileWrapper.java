@@ -9,6 +9,7 @@
 package org.hitchain.hit.api;
 
 import io.ipfs.api.NamedStreamable;
+import org.apache.commons.lang3.StringUtils;
 import org.hitchain.hit.util.ECCUtil;
 
 import java.io.ByteArrayInputStream;
@@ -16,7 +17,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -29,29 +29,49 @@ import java.util.Optional;
  * @since 2018-11-29
  * auto generate by qdp.
  */
-public class EncryptableFileWrapper implements NamedStreamable {
+public class DecryptableFileWrapper implements NamedStreamable {
     private final HashedFile source;
     private final IndexFile indexFile;
+    private final String account;
+    private final String privateKey;
 
-    public EncryptableFileWrapper(HashedFile source, IndexFile indexFile) {
+    public DecryptableFileWrapper(HashedFile source, IndexFile indexFile, String account, String privateKey) {
         if (source == null) {
-            throw new IllegalStateException("EncryptableFileWrapper HashedFile does not exist: " + source);
+            throw new IllegalStateException("DecryptableFileWrapper HashedFile does not exist: " + source);
         } else {
             this.source = source;
         }
         if (indexFile == null) {
-            throw new IllegalStateException("EncryptableFileWrapper IndexFile does not exist: " + indexFile);
+            throw new IllegalStateException("DecryptableFileWrapper IndexFile does not exist: " + indexFile);
         } else {
             this.indexFile = indexFile;
+        }
+        if (indexFile.isPrivate() && StringUtils.isBlank(account)) {
+            throw new IllegalStateException("DecryptableFileWrapper account does not exist: " + account);
+        } else {
+            this.account = account;
+        }
+        if (indexFile.isPrivate() && StringUtils.isBlank(privateKey)) {
+            throw new IllegalStateException("DecryptableFileWrapper privateKey does not exist: " + privateKey);
+        } else {
+            this.privateKey = privateKey;
         }
     }
 
     public InputStream getInputStream() throws IOException {
         if (indexFile.isPrivate()) {
+            String encrypt = null;
+            if (account.equals(indexFile.getOwner()) || account.equals(indexFile.getOwnerPublicKey())) {
+                encrypt = indexFile.getRepositoryPrivateKeyEncrypted();
+            } else if (indexFile.getMemberKeys().containsKey(account)) {
+                encrypt = indexFile.getMemberRepositoryKeys().get(indexFile.getMemberKeys().get(account));
+            } else if (indexFile.getMemberRepositoryKeys().containsKey(account)) {
+                encrypt = indexFile.getMemberRepositoryKeys().get(account);
+            }
             try {
-                PublicKey publicKey = ECCUtil.getPublicKeyFromEthereumPublicKeyHex(indexFile.getRepositoryPublicKey());
+                byte[] repositoryPrivateKey = ECCUtil.privateDecrypt(encrypt.getBytes(), ECCUtil.getPrivateKeyFromEthereumHex(privateKey));
                 InputStream is = source.getInputStream();
-                byte[] bytes = ECCUtil.publicEncrypt(is, publicKey);
+                byte[] bytes = ECCUtil.privateDecrypt(is, ECCUtil.getPrivateKeyFromEthereumHex(new String(repositoryPrivateKey)));
                 return new ByteArrayInputStream(bytes);
             } catch (Exception e) {
                 throw new IOException(e);
@@ -69,7 +89,7 @@ public class EncryptableFileWrapper implements NamedStreamable {
             List<HashedFile> children = source.getChildren();
             List<NamedStreamable> list = new ArrayList<>();
             for (HashedFile hf : children) {
-                list.add(new EncryptableFileWrapper(hf, indexFile));
+                list.add(new DecryptableFileWrapper(hf, indexFile, account, privateKey));
             }
             return list;
         }
