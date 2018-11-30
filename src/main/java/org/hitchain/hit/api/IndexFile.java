@@ -43,7 +43,7 @@ public class IndexFile {
         }
         IndexFile index = new IndexFile();
         String content = new String(contents, "UTF-8");
-        String[] split = StringUtils.split(content, "\n");
+        String[] split = StringUtils.split(content, '\n');
         for (String line : split) {
             String[] values = StringUtils.split(line, ":");
             if (values.length != 3) {
@@ -67,6 +67,32 @@ public class IndexFile {
             }
         }
         return index;
+    }
+
+    public String toString() {
+        return getContent();
+    }
+
+    public String getContent() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("PROJ:").append(getProjectName()).append(":").append(getProjectHash()).append('\n');
+        if (StringUtils.isNotBlank(getIpfsUrl())) {
+            sb.append("IPFS:").append("-").append(":").append(getIpfsUrl()).append('\n');
+        }
+        if (StringUtils.isNotBlank(getRepositoryPrivateKeyEncrypted())) {
+            sb.append("RKEY:").append(getRepositoryPrivateKeyEncrypted()).append(":").append(getRepositoryPublicKey()).append('\n');
+        }
+        sb.append("OKEY:").append(getOwner()).append(":").append(getOwnerPublicKey()).append('\n');
+        for (Map.Entry<String, String> entry : getMemberKeys().entrySet()) {
+            sb.append("MKEY:").append(entry.getKey()).append(":").append(entry.getValue()).append('\n');
+        }
+        for (Map.Entry<String, String> entry : getMemberKeys().entrySet()) {
+            sb.append("MKEY:").append(entry.getKey()).append(":").append(entry.getValue()).append('\n');
+        }
+        for (Map.Entry<String, String> entry : getMemberRepositoryKeys().entrySet()) {
+            sb.append("TKEY:").append(entry.getValue()).append(":").append(entry.getKey()).append('\n');
+        }
+        return sb.toString();
     }
 
     public void addMemberPublic(String memberName, String memberPublicKey) {
