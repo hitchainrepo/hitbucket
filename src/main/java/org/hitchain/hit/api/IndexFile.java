@@ -59,7 +59,7 @@ public class IndexFile {
                 index.setRepositoryPublicKey(values[2]);
             } else if ("OKEY".equals(values[0])) {
                 index.setOwner(values[1]);
-                index.setOwner(values[2]);
+                index.setOwnerPublicKey(values[2]);
             } else if ("MKEY".equals(values[0])) {
                 index.getMemberKeys().put(values[1], values[2]);
             } else if ("TKEY".equals(values[0])) {
