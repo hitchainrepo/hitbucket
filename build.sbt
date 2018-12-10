@@ -27,6 +27,7 @@ resolvers ++= Seq(
   "aliyun" at "http://maven.aliyun.com/nexus/content/groups/public/",
   "jitpack" at "https://jitpack.io/",
   "bintray-sbt-plugins" at "http://dl.bintray.com/typesafe/ivy-releases/",
+  "spray repo" at "http://repo.spray.io",
   Resolver.jcenterRepo,
   "amateras" at "http://amateras.sourceforge.jp/mvn/",
   "sonatype-snapshot" at "https://oss.sonatype.org/content/repositories/snapshots/",
@@ -262,3 +263,12 @@ licenseOverrides := {
   case DepModuleInfo("com.github.bkromhout", "java-diff-utils", _) =>
     LicenseInfo(LicenseCategory.Apache, "Apache-2.0", "http://www.apache.org/licenses/LICENSE-2.0")
 }
+
+enablePlugins(SbtTwirl)
+
+watchSources +=
+  WatchSource(
+    (sourceDirectory in TwirlKeys.compileTemplates).value,
+    "*.scala.*",
+    (excludeFilter in Global).value
+  )
