@@ -12,6 +12,7 @@ import io.ipfs.api.NamedStreamable;
 import org.hitchain.hit.util.ECCUtil;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -78,7 +79,7 @@ public class EncryptableFileWrapper implements NamedStreamable {
 
     public Optional<String> getName() {
         try {
-            return Optional.of(URLEncoder.encode(this.source.getName(), "UTF-8"));
+            return Optional.of(URLEncoder.encode(new File(this.source.getName()).getName(), "UTF-8"));
         } catch (UnsupportedEncodingException var2) {
             throw new RuntimeException(var2);
         }
