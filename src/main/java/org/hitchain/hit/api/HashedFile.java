@@ -8,11 +8,15 @@
  ******************************************************************************/
 package org.hitchain.hit.api;
 
+import org.apache.commons.io.IOUtils;
+
 import java.beans.Transient;
-import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -99,18 +103,9 @@ public interface HashedFile {
         @Transient
         public byte[] getContents() throws IOException {
             if (contents == null) {
-                InputStream in = getInputStream();
-                if (in == null) {
-                    return null;
-                }
-                ByteArrayOutputStream bout = new ByteArrayOutputStream();
-                byte[] tmp = new byte[4096];
-                int r;
-                while ((r = in.read(tmp)) >= 0) {
-                    bout.write(tmp, 0, r);
-                }
-                in.close();
-                contents = bout.toByteArray();
+                InputStream is = getInputStream();
+                contents = IOUtils.toByteArray(is);
+                is.close();
             }
             return contents;
         }
@@ -184,6 +179,90 @@ public interface HashedFile {
 
         public List<HashedFile> getChildren() {
             return children;
+        }
+
+        public void setChildren(List<HashedFile> children) {
+            this.children = children;
+        }
+
+        @Override
+        public String toString() {
+            return "DirWrapper{" +
+                "name='" + name + '\'' +
+                ", hash='" + hash + '\'' +
+                ", children=" + children +
+                '}';
+        }
+    }
+
+    class FileSystemWrapper implements HashedFile {
+        private String name;
+        private String hash;
+        private List<HashedFile> children = new ArrayList<>();
+        private transient byte[] contents;
+        private Boolean isDir = null;
+
+        public FileSystemWrapper() {
+        }
+
+        public FileSystemWrapper(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getHash() {
+            return hash;
+        }
+
+        public void setHash(String hash) {
+            this.hash = hash;
+        }
+
+        public boolean isDirectory() {
+            return isDir == null ? (isDir = new File(name).isDirectory()) : isDir;
+        }
+
+        @Transient
+        public InputStreamCallback getInputStreamCallback() {
+            return null;
+        }
+
+        @Transient
+        public void setInputStreamCallback(InputStreamCallback callback) {
+
+        }
+
+        @Transient
+        public InputStream getInputStream() throws IOException {
+            return new FileInputStream(name);
+        }
+
+        @Transient
+        public byte[] getContents() throws IOException {
+            if (contents == null) {
+                InputStream is = getInputStream();
+                contents = IOUtils.toByteArray(is);
+                is.close();
+            }
+            return contents;
+        }
+
+        public List<HashedFile> getChildren() {
+            if (isDirectory()) {
+                File[] files = new File(name).listFiles();
+                for (File file : files) {
+                    children.add(new FileSystemWrapper(file.getAbsolutePath()));
+                }
+                return children;
+            }
+            return Collections.emptyList();
         }
 
         public void setChildren(List<HashedFile> children) {
