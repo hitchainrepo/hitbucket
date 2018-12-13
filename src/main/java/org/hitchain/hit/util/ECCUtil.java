@@ -165,6 +165,10 @@ public class ECCUtil {
 
     public static void main(String[] args) throws Exception {
         ECKey key = new ECKey();
+        System.out.println("Pub-len="+key.getPubKey().length);
+        System.out.println("Pri-len="+key.getPrivKeyBytes().length);
+        System.out.println("Pub=" + Hex.toHexString(key.getPubKey()));
+        System.out.println("Pri=" + key.getPrivKey().toString(16));
         org.bouncycastle.math.ec.ECPoint point = key.getPubKeyPoint();
         PublicKey pubKey = getPublicKeyFromECBigInt(point.getXCoord().toBigInteger(), point.getYCoord().toBigInteger());
         System.out.println(Hex.toHexString(pubKey.getEncoded()));
