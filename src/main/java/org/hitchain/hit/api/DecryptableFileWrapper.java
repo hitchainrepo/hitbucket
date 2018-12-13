@@ -9,6 +9,8 @@
 package org.hitchain.hit.api;
 
 import io.ipfs.api.NamedStreamable;
+
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
 import org.hitchain.hit.util.ECCUtil;
 
@@ -69,9 +71,11 @@ public class DecryptableFileWrapper implements NamedStreamable {
                 encrypt = indexFile.getMemberRepositoryKeys().get(account);
             }
             try {
-                byte[] repositoryPrivateKey = ECCUtil.privateDecrypt(encrypt.getBytes(), ECCUtil.getPrivateKeyFromEthereumHex(privateKey));
+            	System.out.println(encrypt);
+                byte[] repositoryPrivateKey = ECCUtil.privateDecrypt(Hex.decodeHex(encrypt.toCharArray()), ECCUtil.getPrivateKeyFromEthereumHex(privateKey));
                 InputStream is = source.getInputStream();
                 byte[] bytes = ECCUtil.privateDecrypt(is, ECCUtil.getPrivateKeyFromEthereumHex(new String(repositoryPrivateKey)));
+                is.close();
                 return new ByteArrayInputStream(bytes);
             } catch (Exception e) {
                 throw new IOException(e);
