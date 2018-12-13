@@ -13,7 +13,9 @@ import io.ipfs.api.IPFS;
 import io.ipfs.api.MerkleNode;
 import io.ipfs.api.NamedStreamable;
 import io.ipfs.multihash.Multihash;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
@@ -23,8 +25,11 @@ import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.RefWriter;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
+import org.hitchain.hit.api.DecryptableFileWrapper;
+import org.hitchain.hit.api.EncryptableFileWrapper;
 import org.hitchain.hit.api.HashedFile;
 import org.hitchain.hit.api.IndexFile;
+import org.hitchain.hit.util.ECCUtil;
 
 import java.io.*;
 import java.util.*;
@@ -39,10 +44,15 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class GitHelper {
 
     public static final String URL_IPFS = System.getProperty("URL_IPFS", "http://121.40.127.45");
+    private static final String rootPubKey = "04e86b10fae9a5df60b31f853f200cf6ed4a2eecdbbbf1f35a6e2053f1a0a23894eaa746565b689715c4f11b4db2e441c6746276014e1266f26f4e073c16762c7e";
+    private static final String rootPriKey = "ce837abb3be97434f9bcb3e0e0be6c2f8c122ff40d5ced32d715ac7cce15383a";
+    private static final String repoPubKey = "04e027cf70f2e8b083c04ef6a55ddcb8af9af19af36c9f0cb63a4c052ee4cae260c0c455c75ce33bf8401dad5092d6b6a97382cd1f807b536b273b46abe99d6e04";
+    private static final String repoPriKey = "68f5f0a7c29ebd7c6b23ac0c45b90cf0dc0e357eba2b746bf153790ca253ec13";
     private static final ReentrantReadWriteLock indexFileLock = new ReentrantReadWriteLock();
 
     public static void main(String[] args) throws Exception {
-        syncProject(new File("/Users/zhaochen/.gitbucket/repositories/root/test.git"));
+        addEncryptRepository();
+        //syncProject(new File("/Users/zhaochen/.gitbucket/repositories/root/test.git"));
         // IPFS ipfs = new IPFS("/ip4/121.40.127.45/tcp/5001");
         // NamedStreamable.FileWrapper dir = new NamedStreamable.FileWrapper(new
         // File("/Users/zhaochen/dev/workspace/testgit"));
@@ -51,6 +61,19 @@ public class GitHelper {
         // System.out.println("MerkleNode = " + mn);
         // System.out.println(mn.name + ", " + mn.hash);
         // }
+    }
+
+    private static void addEncryptRepository() {
+        try {
+            String projectName = "root/test.git";
+            IndexFile indexFile = readIndexFileFromIpfs(projectName);
+            indexFile.setOwnerPublicKey(rootPubKey);
+            indexFile.setRepositoryPublicKey(repoPubKey);
+            indexFile.setRepositoryPrivateKeyEncrypted(Hex.encodeHexString(ECCUtil.publicEncrypt(repoPriKey.getBytes(), ECCUtil.getPublicKeyFromEthereumPublicKeyHex(rootPubKey))));
+            writeIndexFileHash(projectName, writeIndexFileToIpfs(indexFile));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public static void updateServerInfo(File projectDir) throws Exception {
@@ -98,7 +121,9 @@ public class GitHelper {
             updateServerInfo(projectDir);
             String urlIpfs = URL_IPFS;
             IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
-            NamedStreamable.FileWrapper dir = new NamedStreamable.FileWrapper(projectDir);
+            //NamedStreamable.FileWrapper dir = new NamedStreamable.FileWrapper(projectDir);
+            IndexFile indexFile = readIndexFileFromIpfs(getProjectName(projectDir));
+            EncryptableFileWrapper dir = new EncryptableFileWrapper(new HashedFile.FileSystemWrapper(projectDir.getAbsolutePath()), indexFile);
             List<MerkleNode> add = ipfs.add(dir);
             String hash = add.get(add.size() - 1).hash.toBase58();
             System.out.println("Project name: " + projectDir.getPath() + ", hash: " + urlIpfs + ":8080/ipfs/" + hash);
@@ -169,8 +194,12 @@ public class GitHelper {
                 String fileName = (String) file.get("Path");
                 File f = new File(dir, fileName);
                 f.getParentFile().mkdirs();
-                byte[] hashes = ipfs.cat(Multihash.fromBase58((String) file.get("Hash")));
-                FileUtils.writeByteArrayToFile(f, hashes);
+                DecryptableFileWrapper decryptableFile = new DecryptableFileWrapper(new HashedFile.FileWrapper(f.getAbsolutePath(), new HashedFile.InputStreamCallback() {
+                    public InputStream call(HashedFile hashedFile) throws IOException {
+                        return new ByteArrayInputStream(ipfs.cat(Multihash.fromBase58((String) file.get("Hash"))));
+                    }
+                }), indexFile, "root", rootPriKey);
+                FileUtils.writeByteArrayToFile(f, IOUtils.toByteArray(decryptableFile.getInputStream()));
             }
             System.out.println(new ObjectMapper().writeValueAsString(files));
         } catch (Exception e) {
