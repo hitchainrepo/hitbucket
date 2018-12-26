@@ -165,6 +165,42 @@ public class GitHelper {
 		return map;
 	}
 
+	public static Map<String/* filename */, String/* hash */> generateNewGitFileIndex(
+			Map<String/* relativePath */, File> current, Map<String/* filename */, String/* hash */> oldGitFileIndex,
+			Map<String/* filename */, String/* hash */> newGitFileIndex) {
+		Map<String, String> map = new LinkedHashMap<String, String>();
+		for (Entry<String, File> entry : current.entrySet()) {
+			String key = entry.getKey();
+			map.put(key, StringUtils.defaultString(newGitFileIndex.get(key), oldGitFileIndex.get(key)));
+		}
+		return map;
+	}
+
+	public static Map<String/* filename */, String/* hash */> writeNewFileToIpfs(
+			Map<String/* relativePath */, File> newGitFile) {
+		Map<String, String> map = new HashMap<String, String>();
+		String urlIpfs = URL_IPFS;
+		IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
+		try {
+			List<NamedStreamable> files = new ArrayList<NamedStreamable>();
+			for (Entry<String, File> entry : newGitFile.entrySet()) {
+				files.add(new NamedStreamable.ByteArrayWrapper(entry.getKey(),
+						FileUtils.readFileToByteArray(entry.getValue())));
+			}
+			List<MerkleNode> add = ipfs.add(files, false, false);
+			Map<String, String> hashMap = new HashMap<String, String>();
+			for (MerkleNode mn : add) {
+				hashMap.put(mn.name.get(), mn.hash.toBase58());
+			}
+			for (Entry<String, File> entry : newGitFile.entrySet()) {
+				map.put(entry.getKey(), hashMap.get(entry.getKey()));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return map;
+	}
+
 	public static Tuple.Two<Map<String, File>, Map<String, String>> diffGitFiles(
 			Map<String/* relativePath */, File> current, Map<String/* filename */, String/* hash */> gitFileIndex) {
 		Map<String, File> fileAdd = new HashMap<String, File>();
@@ -182,9 +218,9 @@ public class GitHelper {
 		return new Tuple.Two<Map<String, File>, Map<String, String>>(fileAdd, fileRemove);
 	}
 
-	public static byte[] toGitFileIndex(Map<String/* filename */, String/* hash */> gitFileMap) {
+	public static byte[] toGitFileIndex(Map<String/* filename */, String/* hash */> gitFileIndex) {
 		StringBuilder sb = new StringBuilder();
-		for (Entry<String, String> entry : gitFileMap.entrySet()) {
+		for (Entry<String, String> entry : gitFileIndex.entrySet()) {
 			sb.append(entry.getValue()).append(',').append(entry.getKey()).append('\n');
 		}
 		try {
