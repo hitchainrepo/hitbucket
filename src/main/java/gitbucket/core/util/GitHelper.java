@@ -153,7 +153,7 @@ public class GitHelper {
 	 * @param projectDir
 	 * @return
 	 */
-	public static Map<String, File> listGitFiles(File projectDir) {
+	public static Map<String/* relativePath */, File> listGitFiles(File projectDir) {
 		String basePath = projectDir.getAbsolutePath();
 		Collection<File> files = FileUtils.listFiles(projectDir, null, true);
 		Map<String, File> map = new HashMap<String, File>();
@@ -165,6 +165,22 @@ public class GitHelper {
 		return map;
 	}
 
+	public static Tuple.Two<Map<String, File>, Map<String, String>> diffGitFiles(
+			Map<String/* relativePath */, File> current, Map<String/* filename */, String/* hash */> gitFileIndex) {
+		Map<String, File> fileAdd = new HashMap<String, File>();
+		Map<String, String> fileRemove = new HashMap<String, String>();
+		for (Entry<String, File> entry : current.entrySet()) {
+			if (!gitFileIndex.containsKey(entry.getKey())) {
+				fileAdd.put(entry.getKey(), entry.getValue());
+			}
+		}
+		for (Entry<String, String> entry : gitFileIndex.entrySet()) {
+			if (!current.containsKey(entry.getKey())) {
+				fileRemove.put(entry.getKey(), entry.getValue());
+			}
+		}
+		return new Tuple.Two<Map<String, File>, Map<String, String>>(fileAdd, fileRemove);
+	}
 
 	public static byte[] toGitFileIndex(Map<String/* filename */, String/* hash */> gitFileMap) {
 		StringBuilder sb = new StringBuilder();
