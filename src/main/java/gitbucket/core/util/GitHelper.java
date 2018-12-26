@@ -165,6 +165,20 @@ public class GitHelper {
 		return map;
 	}
 
+	public static String writeGitFileIndexToIpfs(Map<String/* filename */, String/* hash */> gitFileHash) {
+		String urlIpfs = URL_IPFS;
+		IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
+		try {
+			NamedStreamable.ByteArrayWrapper file = new NamedStreamable.ByteArrayWrapper("GitFileIndex.gz",
+					toGitFileIndexWithCompress(gitFileHash));
+			List<MerkleNode> add = ipfs.add(file);
+			return add.get(add.size() - 1).hash.toBase58();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
 	public static Map<String/* filename */, String/* hash */> generateNewGitFileIndex(
 			Map<String/* relativePath */, File> current, Map<String/* filename */, String/* hash */> oldGitFileIndex,
 			Map<String/* filename */, String/* hash */> newGitFileIndex) {
@@ -218,7 +232,7 @@ public class GitHelper {
 		return new Tuple.Two<Map<String, File>, Map<String, String>>(fileAdd, fileRemove);
 	}
 
-	public static byte[] toGitFileIndex(Map<String/* filename */, String/* hash */> gitFileIndex) {
+	public static byte[] toGitFileIndexWithCompress(Map<String/* filename */, String/* hash */> gitFileIndex) {
 		StringBuilder sb = new StringBuilder();
 		for (Entry<String, String> entry : gitFileIndex.entrySet()) {
 			sb.append(entry.getValue()).append(',').append(entry.getKey()).append('\n');
