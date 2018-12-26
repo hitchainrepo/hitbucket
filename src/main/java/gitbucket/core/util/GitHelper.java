@@ -13,6 +13,7 @@ import io.ipfs.api.IPFS;
 import io.ipfs.api.MerkleNode;
 import io.ipfs.api.NamedStreamable;
 import io.ipfs.multihash.Multihash;
+
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -33,7 +34,10 @@ import org.hitchain.hit.util.ECCUtil;
 
 import java.io.*;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * GitHelper
@@ -51,7 +55,8 @@ public class GitHelper {
 	private static final ReentrantReadWriteLock indexFileLock = new ReentrantReadWriteLock();
 
 	public static void main(String[] args) throws Exception {
-		addEncryptRepository();
+		System.out.println(listGitFiles(new File("/Users/zhaochen/.gitbucket/repositories/root/test.git")));
+		// addEncryptRepository();
 		// syncProject(new
 		// File("/Users/zhaochen/.gitbucket/repositories/root/test.git"));
 		// IPFS ipfs = new IPFS("/ip4/121.40.127.45/tcp/5001");
@@ -137,6 +142,71 @@ public class GitHelper {
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
+	}
+
+	/**
+	 * <pre>
+	 * Git File Index:
+	 * filehash,path/path2/filename
+	 * </pre>
+	 * 
+	 * @param projectDir
+	 * @return
+	 */
+	public static Map<String, File> listGitFiles(File projectDir) {
+		String basePath = projectDir.getAbsolutePath();
+		Collection<File> files = FileUtils.listFiles(projectDir, null, true);
+		Map<String, File> map = new HashMap<String, File>();
+		for (File file : files) {
+			if (file.isFile()) {
+				map.put(file.getAbsolutePath().substring(basePath.length() + 1), file);
+			}
+		}
+		return map;
+	}
+
+
+	public static byte[] toGitFileIndex(Map<String/* filename */, String/* hash */> gitFileMap) {
+		StringBuilder sb = new StringBuilder();
+		for (Entry<String, String> entry : gitFileMap.entrySet()) {
+			sb.append(entry.getValue()).append(',').append(entry.getKey()).append('\n');
+		}
+		try {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			GZIPOutputStream gzip = new GZIPOutputStream(out);
+			gzip.write(sb.toString().getBytes("UTF-8"));
+			gzip.close();
+			return out.toByteArray();
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	public static Map<String/* filename */, String/* hash */> parseGitFilesIndex(byte[] contentWithCompress) {
+		Map<String, String> map = new LinkedHashMap<String, String>();
+		if (contentWithCompress == null || contentWithCompress.length == 0) {
+			return null;
+		}
+		try {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			ByteArrayInputStream in = new ByteArrayInputStream(contentWithCompress);
+			GZIPInputStream ungzip = new GZIPInputStream(in);
+			IOUtils.copy(ungzip, out);
+			ungzip.close();
+			String index = new String(out.toByteArray(), "UTF-8");
+			String[] lines = StringUtils.split(index, '\n');
+			for (String line : lines) {
+				int indexOf = line.indexOf(',');
+				if (indexOf < 0) {
+					continue;
+				}
+				String fileHash = line.substring(0, indexOf), fileName = line.substring(indexOf + 1);
+				map.put(fileName, fileHash);
+			}
+		} catch (Exception e) {
+			return null;
+		}
+		return map;
 	}
 
 	public static void syncProject(File dir) {
