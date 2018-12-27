@@ -1,5 +1,6 @@
 package org.hitchain.hit.util;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.bouncycastle.asn1.sec.SECNamedCurves;
@@ -18,7 +19,9 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.security.*;
 import java.security.spec.*;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Random;
 
 
 public class ECCUtil {
@@ -124,6 +127,7 @@ public class ECCUtil {
         ECPrivateKeySpec privateKeySpec = new ECPrivateKeySpec(s, ecParameterSpec);
         try {
             KeyFactory keyFactory = KeyFactory.getInstance("EC");
+            ECKey key;
             return keyFactory.generatePrivate(privateKeySpec);
         } catch (Exception e) {
             e.printStackTrace();
@@ -163,10 +167,104 @@ public class ECCUtil {
         return getPublicKeyFromECBigInt(point.getXCoord().toBigInteger(), point.getYCoord().toBigInteger());
     }
 
+    public static byte[] sha256(byte[] data) {
+        return DigestUtils.sha256(data);
+    }
+
+    public static byte[] sign(byte[] data, byte[] privateKey) {
+        try {
+            ECKey key = ECKey.fromPrivate(privateKey);
+            ECKey.ECDSASignature sign = key.sign(sha256(data));
+            return sign.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static boolean verify(byte[] data, byte[] signedHash, byte[] publicKey) {
+        try {
+            return ECKey.verify(sha256(data), signedHash, publicKey);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean verifyByNodeId(byte[] data, byte[] signedHash, byte[] nodeId) {
+        try {
+            ECKey key = ECKey.signatureToKey(sha256(data), signedHash);
+            byte[] pubKeyToNodeId = pubKeyToNodeId(key.getPubKey());
+            return Arrays.equals(pubKeyToNodeId, nodeId);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean verifyByAddress(byte[] data, byte[] signedHash, byte[] address) {
+        try {
+            ECKey key = ECKey.signatureToKey(sha256(data), signedHash);
+            return Arrays.equals(key.getAddress(), address);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static byte[] pubKeyToNodeId(byte[] pubKey) {
+        return sha256(pubKey);
+    }
+
+    public static KeyPair toKeyPair(String privateKeyHex) {
+        return toKeyPair(Hex.decode(privateKeyHex));
+    }
+
+    public static KeyPair toKeyPair(byte[] privateKey) {
+        return toKeyPair(ECKey.fromPrivate(privateKey));
+    }
+
+    public static KeyPair toKeyPair(ECKey key) {
+        org.bouncycastle.math.ec.ECPoint point = key.getPubKeyPoint();
+        return new KeyPair(getPublicKeyFromECBigInt(point.getXCoord().toBigInteger(), point.getYCoord().toBigInteger()), getPrivateKeyFromECBigIntAndCurve(key.getPrivKey()));
+    }
+
     public static void main(String[] args) throws Exception {
+        ECKey key = ECKey.fromPrivate(Hex.decode("f9553a312f682c94fc7647aab8308668cf801b862d5340ba0c0a9bcd90766da3"));
+        byte[] nodeId = pubKeyToNodeId(key.getPubKey());
+        byte[] bytes = "HELLO".getBytes();
+        byte[] sign = ECCUtil.sign("HELLO".getBytes(), key.getPrivKeyBytes());
+        System.out.println("SHA0=" + Hex.toHexString(sha256(key.getPubKey())));
+        System.out.println("SHA1=" + Hex.toHexString(sha256(key.getPubKey())));
+        System.out.println("PubKey0=" + Hex.toHexString(key.getPubKey()));
+        byte[] pubKey = ECKey.signatureToKey(sha256(bytes), sign).getPubKey();
+        System.out.println("PubKey1=" + Hex.toHexString(pubKey));
+        System.out.println("NodeId0=" + Hex.toHexString(nodeId));
+        System.out.println("NodeId1=" + Hex.toHexString(sha256(pubKey)));
+        System.out.println("Verify: " + verifyByNodeId(bytes, sign, nodeId));
+
+        System.out.println(key.getPubKey().length);
+        System.out.println(DigestUtils.sha512("HELLO").length);
+        System.out.println(DigestUtils.sha384("HELLO").length);
+        System.out.println(DigestUtils.sha256("HELLO").length);
+    }
+
+    public static void main5(String[] args) throws Exception {
+        ECKey key = ECKey.fromPrivate(Hex.decode("f9553a312f682c94fc7647aab8308668cf801b862d5340ba0c0a9bcd90766da3"));
+        System.out.println("PRI=" + key.getPrivKeyBytes().length);
+        System.out.println("PUB=" + key.getAddress().length);
+        System.out.println("PUB=" + key.getPubKey().length);
+        System.out.println("PUB=" + Hex.toHexString(key.getAddress()));
+        for (int i = 0; i < 10; i++) {
+            byte[] data = ByteUtils.utf8(StringUtils.repeat("hello", new Random().nextInt(100)));
+            byte[] sign = sign(data, key.getPrivKeyBytes());
+            System.out.println("PUB=" + Hex.toHexString(ECKey.signatureToKey(sha256(data), sign).getAddress()));
+            System.out.println("length=" + sign.length);
+            System.out.println(verify(data, sign, key.getPubKey()));
+        }
+        main4(args);
+    }
+
+    public static void main4(String[] args) throws Exception {
         ECKey key = new ECKey();
-        System.out.println("Pub-len="+key.getPubKey().length);
-        System.out.println("Pri-len="+key.getPrivKeyBytes().length);
+        System.out.println("Pub-len=" + key.getPubKey().length);
+        System.out.println("Pri-len=" + key.getPrivKeyBytes().length);
         System.out.println("Pub=" + Hex.toHexString(key.getPubKey()));
         System.out.println("Pri=" + key.getPrivKey().toString(16));
         org.bouncycastle.math.ec.ECPoint point = key.getPubKeyPoint();

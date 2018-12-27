@@ -34,6 +34,7 @@ package org.hitchain.hit.util;
  * limitations under the License.
  */
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.bouncycastle.asn1.sec.SECNamedCurves;
 import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.asn1.x9.X9IntegerConverter;
@@ -110,7 +111,7 @@ public class ECKey implements Serializable {
 
     protected final ECPoint pub;
     // The two parts of the key. If "priv" is set, "pub" can always be calculated. If "pub" is set but not "priv", we
-    // can only verify signatures not make them.
+    // can only verifySign signatures not make them.
     // TODO: Redesign this class to use consistent internals and more efficient serialization.
     private BigInteger priv;
     // Transient because it's calculated on demand.
@@ -257,24 +258,8 @@ public class ECKey implements Serializable {
         return point.getEncoded(compressed);
     }
 
-    /**
-     * Given a piece of text and a message signature encoded in base64, returns an ECKey
-     * containing the public key that was used to sign it. This can then be compared to the expected public key to
-     * determine if the signature was correct.
-     *
-     * @param messageHash     a piece of human readable text that was signed
-     * @param signatureBase64 The Ethereum-format message signature in base64
-     * @return -
-     * @throws SignatureException If the public key could not be recovered or if there was a signature format error.
-     */
-    public static ECKey signatureToKey(byte[] messageHash, String signatureBase64) throws SignatureException {
-        byte[] signatureEncoded;
-        try {
-            signatureEncoded = Base64.decode(signatureBase64);
-        } catch (RuntimeException e) {
-            // This is what you get back from Bouncy Castle if base64 doesn't decode :(
-            throw new SignatureException("Could not decode base64", e);
-        }
+    public static ECKey signatureToKey(byte[] messageHash, byte[] sign) throws SignatureException {
+        byte[] signatureEncoded = sign;
         // Parse the signature bytes into r/s and the selector value.
         if (signatureEncoded.length < 65) {
             throw new SignatureException("Signature truncated, expected 65 bytes and got " + signatureEncoded.length);
@@ -302,12 +287,48 @@ public class ECKey implements Serializable {
     }
 
     /**
+     * Given a piece of text and a message signature encoded in base64, returns an ECKey
+     * containing the public key that was used to sign it. This can then be compared to the expected public key to
+     * determine if the signature was correct.
+     *
+     * @param messageHash     a piece of human readable text that was signed
+     * @param signatureBase64 The Ethereum-format message signature in base64
+     * @return -
+     * @throws SignatureException If the public key could not be recovered or if there was a signature format error.
+     */
+    public static ECKey signatureToKey(byte[] messageHash, String signatureBase64) throws SignatureException {
+        byte[] signatureEncoded;
+        try {
+            signatureEncoded = Base64.decode(signatureBase64);
+        } catch (RuntimeException e) {
+            // This is what you get back from Bouncy Castle if base64 doesn't decode :(
+            throw new SignatureException("Could not decode base64", e);
+        }
+        return signatureToKey(messageHash, signatureEncoded);
+    }
+
+    /**
      * <p>Verifies the given ECDSA signature against the message bytes using the public key bytes.</p>
      *
      * <p>When using native ECDSA verification, data must be 32 bytes, and no element may be
      * larger than 520 bytes.</p>
      *
-     * @param data      Hash of the data to verify.
+     * @param data             Hash of the data to verifySign.
+     * @param signatureBytes65 signature 65 bytes.
+     * @param pub              The public key bytes to use.
+     * @return -
+     */
+    public static boolean verify(byte[] data, byte[] signatureBytes65, byte[] pub) {
+        return verify(data, ECDSASignature.fromBytes(signatureBytes65), pub);
+    }
+
+    /**
+     * <p>Verifies the given ECDSA signature against the message bytes using the public key bytes.</p>
+     *
+     * <p>When using native ECDSA verification, data must be 32 bytes, and no element may be
+     * larger than 520 bytes.</p>
+     *
+     * @param data      Hash of the data to verifySign.
      * @param signature signature.
      * @param pub       The public key bytes to use.
      * @return -
@@ -480,7 +501,7 @@ public class ECKey implements Serializable {
      * *
      *
      * @param input - data
-     * @return - 20 right bytes of the hash sha3 of the data
+     * @return - 20 right bytes of the hash sha256 of the data
      */
     public static byte[] sha3omit12(byte[] input) {
         byte[] hash = keccak256(input);
@@ -627,7 +648,7 @@ public class ECKey implements Serializable {
     }
 
     /**
-     * Takes the sha3 hash (32 bytes) of data and returns the ECDSA signature
+     * Takes the sha256 hash (32 bytes) of data and returns the ECDSA signature
      *
      * @param messageHash -
      * @return -
@@ -793,6 +814,19 @@ public class ECKey implements Serializable {
         }
 
         /**
+         * @param bytes65 - 1 header + 32 bytes for R + 32 bytes for S
+         * @return -
+         */
+        public static ECDSASignature fromBytes(byte[] bytes65) {
+            byte v = bytes65[0];
+            byte[] r = ArrayUtils.subarray(bytes65, 1, 33);
+            byte[] s = ArrayUtils.subarray(bytes65, 33, 65);
+            ECDSASignature signature = fromComponents(r, s);
+            signature.v = v;
+            return signature;
+        }
+
+        /**
          * @param r -
          * @param s -
          * @param v -
@@ -897,6 +931,17 @@ public class ECKey implements Serializable {
             System.arraycopy(bigIntegerToBytes(this.r, 32), 0, sigData, 1, 32);
             System.arraycopy(bigIntegerToBytes(this.s, 32), 0, sigData, 33, 32);
             return new String(Base64.encode(sigData), Charset.forName("UTF-8"));
+        }
+
+        /**
+         * @return -
+         */
+        public byte[] toByteArray() {
+            byte[] sigData = new byte[65];  // 1 header + 32 bytes for R + 32 bytes for S
+            sigData[0] = v;
+            System.arraycopy(bigIntegerToBytes(this.r, 32), 0, sigData, 1, 32);
+            System.arraycopy(bigIntegerToBytes(this.s, 32), 0, sigData, 33, 32);
+            return sigData;
         }
 
         @Override
