@@ -11,6 +11,7 @@ package org.hitchain.hit.api;
 import org.apache.commons.io.IOUtils;
 
 import java.beans.Transient;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -23,259 +24,275 @@ import java.util.List;
  * HashedIndexTree
  *
  * @author <a href="mailto:iffiff1@gmail.com">Tyler Chen</a>
- * @since 2018-11-23
- * auto generate by qdp.
+ * @since 2018-11-23 auto generate by qdp.
  */
 public interface HashedFile {
 
-    String getName();
+	String getName();
 
-    String getHash();
+	String getHash();
 
-    boolean isDirectory();
+	boolean isDirectory();
 
-    void setInputStreamCallback(InputStreamCallback callback);
+	void setInputStreamCallback(InputStreamCallback callback);
 
-    InputStream getInputStream() throws IOException;
+	InputStream getInputStream() throws IOException;
 
-    byte[] getContents() throws IOException;
+	byte[] getContents() throws IOException;
 
-    List<HashedFile> getChildren();
+	List<HashedFile> getChildren();
 
-    interface InputStreamCallback {
-        InputStream call(HashedFile hashedFile) throws IOException;
-    }
+	interface InputStreamCallback {
+		InputStream call(HashedFile hashedFile) throws IOException;
+	}
 
-    class FileWrapper implements HashedFile {
+	class ByteArrayInputStreamCallback implements InputStreamCallback {
+		protected ByteArrayInputStream bais;
 
-        private String name;
-        private String hash;
-        private transient InputStreamCallback inputStreamCallback;
-        private transient byte[] contents;
+		public ByteArrayInputStreamCallback(ByteArrayInputStream bais) {
+			this.bais = bais;
+		}
 
-        public FileWrapper() {
-        }
+		public ByteArrayInputStreamCallback(byte[] bytes) {
+			this.bais = new ByteArrayInputStream(bytes);
+		}
 
-        public FileWrapper(String name) {
-            this.name = name;
-        }
+		public InputStream call(HashedFile hashedFile) throws IOException {
+			return bais;
+		}
+	}
 
-        public FileWrapper(String name, InputStreamCallback inputStreamCallback) {
-            this.name = name;
-            this.inputStreamCallback = inputStreamCallback;
-        }
+	class FileInputStreamCallback implements InputStreamCallback {
+		protected File file;
 
-        public String getName() {
-            return name;
-        }
+		public FileInputStreamCallback(File file) {
+			this.file = file;
+		}
 
-        public void setName(String name) {
-            this.name = name;
-        }
+		public InputStream call(HashedFile hashedFile) throws IOException {
+			return new FileInputStream(file);
+		}
+	}
 
-        public String getHash() {
-            return hash;
-        }
+	class FileWrapper implements HashedFile {
 
-        public void setHash(String hash) {
-            this.hash = hash;
-        }
+		private String name;
+		private String hash;
+		private transient InputStreamCallback inputStreamCallback;
+		private transient byte[] contents;
 
-        public boolean isDirectory() {
-            return false;
-        }
+		public FileWrapper() {
+		}
 
-        @Transient
-        public InputStreamCallback getInputStreamCallback() {
-            return inputStreamCallback;
-        }
+		public FileWrapper(String name) {
+			this.name = name;
+		}
 
-        @Transient
-        public void setInputStreamCallback(InputStreamCallback inputStreamCallback) {
-            this.inputStreamCallback = inputStreamCallback;
-        }
+		public FileWrapper(String name, InputStreamCallback inputStreamCallback) {
+			this.name = name;
+			this.inputStreamCallback = inputStreamCallback;
+		}
 
-        @Transient
-        public InputStream getInputStream() throws IOException {
-            return inputStreamCallback == null ? null : inputStreamCallback.call(this);
-        }
+		public String getName() {
+			return name;
+		}
 
-        @Transient
-        public byte[] getContents() throws IOException {
-            if (contents == null) {
-                InputStream is = getInputStream();
-                contents = IOUtils.toByteArray(is);
-                is.close();
-            }
-            return contents;
-        }
+		public void setName(String name) {
+			this.name = name;
+		}
 
-        @Transient
-        public List<HashedFile> getChildren() {
-            return null;
-        }
+		public String getHash() {
+			return hash;
+		}
 
-        @Override
-        public String toString() {
-            return "FileWrapper{" +
-                "name='" + name + '\'' +
-                ", hash='" + hash + '\'' +
-                '}';
-        }
-    }
+		public void setHash(String hash) {
+			this.hash = hash;
+		}
 
-    class DirWrapper implements HashedFile {
+		public boolean isDirectory() {
+			return false;
+		}
 
-        private String name;
-        private String hash;
-        private List<HashedFile> children = new ArrayList<>();
+		@Transient
+		public InputStreamCallback getInputStreamCallback() {
+			return inputStreamCallback;
+		}
 
-        public DirWrapper() {
-        }
+		@Transient
+		public void setInputStreamCallback(InputStreamCallback inputStreamCallback) {
+			this.inputStreamCallback = inputStreamCallback;
+		}
 
-        public DirWrapper(String name) {
-            this.name = name;
-        }
+		@Transient
+		public InputStream getInputStream() throws IOException {
+			return inputStreamCallback == null ? null : inputStreamCallback.call(this);
+		}
 
-        public String getName() {
-            return name;
-        }
+		@Transient
+		public byte[] getContents() throws IOException {
+			if (contents == null) {
+				InputStream is = getInputStream();
+				contents = IOUtils.toByteArray(is);
+				is.close();
+			}
+			return contents;
+		}
 
-        public void setName(String name) {
-            this.name = name;
-        }
+		@Transient
+		public List<HashedFile> getChildren() {
+			return null;
+		}
 
-        public String getHash() {
-            return hash;
-        }
+		@Override
+		public String toString() {
+			return "FileWrapper{" + "name='" + name + '\'' + ", hash='" + hash + '\'' + '}';
+		}
+	}
 
-        public void setHash(String hash) {
-            this.hash = hash;
-        }
+	class DirWrapper implements HashedFile {
 
-        public boolean isDirectory() {
-            return true;
-        }
+		private String name;
+		private String hash;
+		private List<HashedFile> children = new ArrayList<>();
 
-        @Transient
-        public InputStreamCallback getInputStreamCallback() {
-            return null;
-        }
+		public DirWrapper() {
+		}
 
-        @Transient
-        public void setInputStreamCallback(InputStreamCallback callback) {
+		public DirWrapper(String name) {
+			this.name = name;
+		}
 
-        }
+		public String getName() {
+			return name;
+		}
 
-        @Transient
-        public InputStream getInputStream() throws IOException {
-            return null;
-        }
+		public void setName(String name) {
+			this.name = name;
+		}
 
-        @Transient
-        public byte[] getContents() throws IOException {
-            return null;
-        }
+		public String getHash() {
+			return hash;
+		}
 
-        public List<HashedFile> getChildren() {
-            return children;
-        }
+		public void setHash(String hash) {
+			this.hash = hash;
+		}
 
-        public void setChildren(List<HashedFile> children) {
-            this.children = children;
-        }
+		public boolean isDirectory() {
+			return true;
+		}
 
-        @Override
-        public String toString() {
-            return "DirWrapper{" +
-                "name='" + name + '\'' +
-                ", hash='" + hash + '\'' +
-                ", children=" + children +
-                '}';
-        }
-    }
+		@Transient
+		public InputStreamCallback getInputStreamCallback() {
+			return null;
+		}
 
-    class FileSystemWrapper implements HashedFile {
-        private String name;
-        private String hash;
-        private List<HashedFile> children = new ArrayList<>();
-        private transient byte[] contents;
-        private Boolean isDir = null;
+		@Transient
+		public void setInputStreamCallback(InputStreamCallback callback) {
 
-        public FileSystemWrapper() {
-        }
+		}
 
-        public FileSystemWrapper(String name) {
-            this.name = name;
-        }
+		@Transient
+		public InputStream getInputStream() throws IOException {
+			return null;
+		}
 
-        public String getName() {
-            return name;
-        }
+		@Transient
+		public byte[] getContents() throws IOException {
+			return null;
+		}
 
-        public void setName(String name) {
-            this.name = name;
-        }
+		public List<HashedFile> getChildren() {
+			return children;
+		}
 
-        public String getHash() {
-            return hash;
-        }
+		public void setChildren(List<HashedFile> children) {
+			this.children = children;
+		}
 
-        public void setHash(String hash) {
-            this.hash = hash;
-        }
+		@Override
+		public String toString() {
+			return "DirWrapper{" + "name='" + name + '\'' + ", hash='" + hash + '\'' + ", children=" + children + '}';
+		}
+	}
 
-        public boolean isDirectory() {
-            return isDir == null ? (isDir = new File(name).isDirectory()) : isDir;
-        }
+	class FileSystemWrapper implements HashedFile {
+		private String name;
+		private String hash;
+		private List<HashedFile> children = new ArrayList<>();
+		private transient byte[] contents;
+		private Boolean isDir = null;
 
-        @Transient
-        public InputStreamCallback getInputStreamCallback() {
-            return null;
-        }
+		public FileSystemWrapper() {
+		}
 
-        @Transient
-        public void setInputStreamCallback(InputStreamCallback callback) {
+		public FileSystemWrapper(String name) {
+			this.name = name;
+		}
 
-        }
+		public String getName() {
+			return name;
+		}
 
-        @Transient
-        public InputStream getInputStream() throws IOException {
-            return new FileInputStream(name);
-        }
+		public void setName(String name) {
+			this.name = name;
+		}
 
-        @Transient
-        public byte[] getContents() throws IOException {
-            if (contents == null) {
-                InputStream is = getInputStream();
-                contents = IOUtils.toByteArray(is);
-                is.close();
-            }
-            return contents;
-        }
+		public String getHash() {
+			return hash;
+		}
 
-        public List<HashedFile> getChildren() {
-            if (isDirectory()) {
-                File[] files = new File(name).listFiles();
-                for (File file : files) {
-                    children.add(new FileSystemWrapper(file.getAbsolutePath()));
-                }
-                return children;
-            }
-            return Collections.emptyList();
-        }
+		public void setHash(String hash) {
+			this.hash = hash;
+		}
 
-        public void setChildren(List<HashedFile> children) {
-            this.children = children;
-        }
+		public boolean isDirectory() {
+			return isDir == null ? (isDir = new File(name).isDirectory()) : isDir;
+		}
 
-        @Override
-        public String toString() {
-            return "DirWrapper{" +
-                "name='" + name + '\'' +
-                ", hash='" + hash + '\'' +
-                ", children=" + children +
-                '}';
-        }
-    }
+		@Transient
+		public InputStreamCallback getInputStreamCallback() {
+			return null;
+		}
+
+		@Transient
+		public void setInputStreamCallback(InputStreamCallback callback) {
+
+		}
+
+		@Transient
+		public InputStream getInputStream() throws IOException {
+			return new FileInputStream(name);
+		}
+
+		@Transient
+		public byte[] getContents() throws IOException {
+			if (contents == null) {
+				InputStream is = getInputStream();
+				contents = IOUtils.toByteArray(is);
+				is.close();
+			}
+			return contents;
+		}
+
+		public List<HashedFile> getChildren() {
+			if (isDirectory()) {
+				File[] files = new File(name).listFiles();
+				for (File file : files) {
+					children.add(new FileSystemWrapper(file.getAbsolutePath()));
+				}
+				return children;
+			}
+			return Collections.emptyList();
+		}
+
+		public void setChildren(List<HashedFile> children) {
+			this.children = children;
+		}
+
+		@Override
+		public String toString() {
+			return "DirWrapper{" + "name='" + name + '\'' + ", hash='" + hash + '\'' + ", children=" + children + '}';
+		}
+	}
 }
