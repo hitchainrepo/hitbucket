@@ -71,7 +71,6 @@ public class DecryptableFileWrapper implements NamedStreamable {
                 encrypt = indexFile.getMemberRepositoryKeys().get(account);
             }
             try {
-            	System.out.println(encrypt);
                 byte[] repositoryPrivateKey = ECCUtil.privateDecrypt(Hex.decodeHex(encrypt.toCharArray()), ECCUtil.getPrivateKeyFromEthereumHex(privateKey));
                 InputStream is = source.getInputStream();
                 byte[] bytes = ECCUtil.privateDecrypt(is, ECCUtil.getPrivateKeyFromEthereumHex(new String(repositoryPrivateKey)));
