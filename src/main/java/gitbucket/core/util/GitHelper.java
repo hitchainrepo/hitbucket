@@ -32,6 +32,7 @@ import org.eclipse.jgit.lib.StoredConfig;
 import org.hitchain.hit.api.DecryptableFileWrapper;
 import org.hitchain.hit.api.EncryptableFileWrapper;
 import org.hitchain.hit.api.HashedFile;
+import org.hitchain.hit.api.HashedFile.ByteArrayInputStreamCallback;
 import org.hitchain.hit.api.IndexFile;
 import org.hitchain.hit.util.ECCUtil;
 
@@ -58,7 +59,10 @@ public class GitHelper {
 	private static final ReentrantReadWriteLock indexFileLock = new ReentrantReadWriteLock();
 
 	public static void main(String[] args) throws Exception {
-		System.out.println(listGitFiles(new File("/Users/zhaochen/.gitbucket/repositories/root/test.git")));
+		// System.out.println(listGitFiles(new
+		// File("/Users/zhaochen/.gitbucket/repositories/root/test.git")));
+		System.out.println(new Multihash(Multihash.Type.sha1, DigestUtils.sha1("hello")).toBase58());
+		System.out.println(Hex.encodeHexString(DigestUtils.sha1("hello")));
 		// addEncryptRepository();
 		// syncProject(new
 		// File("/Users/zhaochen/.gitbucket/repositories/root/test.git"));
@@ -153,29 +157,37 @@ public class GitHelper {
 		try {
 			// updateServerInfo(projectDir);
 			String urlIpfs = URL_IPFS;
-			IndexFile indexFile = readIndexFileFromIpfs(getProjectName(projectDir));
+			IPFS ipfs = getIpfs();
+			String projectName = getProjectName(projectDir);
+			IndexFile indexFile = readIndexFileFromIpfs(projectName);
 			Map<String, File> current = listGitFiles(projectDir);
 			for (Entry<String, File> entry : current.entrySet()) {
 				System.out.println("CURR:" + entry.getKey());
 			}
-			Map<String, String> oldGitFileIndex = readGitFileIndexFromIpfs(getProjectName(projectDir));
-			for (Entry<String, String> entry : oldGitFileIndex.entrySet()) {
+			Map<String, Two<String/* ipfs hash */, String/* sha1 */>> oldGitFileIndex = readGitFileIndexFromIpfs(
+					projectName, ipfs);
+			for (Entry<String, Two<String, String>> entry : oldGitFileIndex.entrySet()) {
 				System.out.println("OLD:" + entry.getKey());
 			}
-			Two<Map<String, File>, Map<String, String>> tuple = diffGitFiles(current, oldGitFileIndex);
-			Map<String, String> newGitFileIndexToIpfs = writeNewFileToIpfs(tuple.getFirst(), indexFile);
-			for (Entry<String, String> entry : newGitFileIndexToIpfs.entrySet()) {
+			Two<Map<String, File>, Map<String, Two<String/* ipfs hash */, String/* sha1 */>>> tuple = diffGitFiles(
+					current, oldGitFileIndex);
+			Map<String, Two<String/* ipfs hash */, String/* sha1 */>> newGitFileIndexToIpfs = writeNewFileToIpfs(
+					tuple.getFirst(), indexFile, ipfs);
+			for (Entry<String, Two<String, String>> entry : newGitFileIndexToIpfs.entrySet()) {
 				System.out.println("ADD:" + entry.getKey());
 			}
-			Map<String, String> newGitFileIndex = generateNewGitFileIndex(current, oldGitFileIndex,
-					newGitFileIndexToIpfs);
-			for (Entry<String, String> entry : newGitFileIndex.entrySet()) {
-				System.out.println("NEW:" + entry.getKey() + ", HASH:" + entry.getValue());
+			Map<String, Two<String/* ipfs hash */, String/* sha1 */>> newGitFileIndex = generateNewGitFileIndex(current,
+					oldGitFileIndex, newGitFileIndexToIpfs);
+			for (Entry<String, Two<String, String>> entry : newGitFileIndex.entrySet()) {
+				System.out.println("NEW:" + entry.getKey() + ", ipfsHash:" + entry.getValue().getFirst() + ", sha1:"
+						+ entry.getValue().getSecond());
 			}
 			String gitFileIndexHash = writeGitFileIndexToIpfs(newGitFileIndex);
-			System.out.println(
-					"Project name5: " + projectDir.getPath() + ", hash: " + urlIpfs + ":8080/ipfs/" + gitFileIndexHash);
-			updateProjectHash(projectDir, gitFileIndexHash);
+			System.out.println("Project name0: " + projectDir.getPath() + ", gitFileHash: " + urlIpfs + ":8080/ipfs/"
+					+ gitFileIndexHash);
+			String indexFileHash = updateProjectHash(projectDir, gitFileIndexHash);
+			System.out.println("Project name: " + projectDir.getPath() + ", indexFileHash: " + urlIpfs + ":8080/ipfs/"
+					+ indexFileHash);
 			return gitFileIndexHash;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -204,37 +216,39 @@ public class GitHelper {
 		return map;
 	}
 
-	public static void syncProjectByGitFileIndex(File dir) {
-		if (!dir.getAbsolutePath().startsWith(Directory.getGitBucketHome())) {
+	public static void syncProjectByGitFileIndex(File projectDir) {
+		if (!projectDir.getAbsolutePath().startsWith(Directory.getGitBucketHome())) {
 			return;
 		}
-		if (dir.exists()) {
+		if (projectDir.exists()) {
 			return;
 		}
-		Map<String, String> map = readGitFileIndexFromIpfs(getProjectName(dir));
+		IPFS ipfs = getIpfs();
+		Map<String/* filename */, Two<String/* ipfs hash */, String/* sha1 */>> map = readGitFileIndexFromIpfs(
+				getProjectName(projectDir), ipfs);
 		if (map == null || map.isEmpty()) {
 			return;
 		}
-		IndexFile indexFile = readIndexFileFromIpfs(getProjectName(dir));
-		String urlIpfs = URL_IPFS;
-		IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
-		for (Entry<String, String> entry : map.entrySet()) {
-			String fileName = entry.getKey(), hash = entry.getValue();
-			int len = "objects/xx".length();
-			boolean isHashed = fileName.startsWith("objects/")/* && fileName.length() > len && fileName.charAt(len) == '/'*/;
-			File f = new File(dir, fileName);
+		IndexFile indexFile = readIndexFileFromIpfs(getProjectName(projectDir));
+		for (Entry<String, Two<String, String>> entry : map.entrySet()) {
+			String fileName = entry.getKey(), ipfsHash = entry.getValue().getFirst(),
+					sha1 = entry.getValue().getSecond();
+			boolean isHashed = fileName
+					.startsWith("objects/")/* && fileName.length() > len && fileName.charAt(len) == '/' */;
+			File f = new File(projectDir, fileName);
 			if (isHashed && f.exists()) {
+				continue;// file already exist.
+			}
+			if (f.exists() && sha1(f).equals(sha1)) {
 				continue;// file already exist.
 			}
 			f.getParentFile().mkdirs();
 			try {
-				byte[] cat = ipfs.cat(Multihash.fromBase58(hash));
+				byte[] cat = ipfs.cat(Multihash.fromBase58(ipfsHash));
 				DecryptableFileWrapper decryptableFile = new DecryptableFileWrapper(
-						new HashedFile.FileWrapper(f.getAbsolutePath(), new HashedFile.InputStreamCallback() {
-							public InputStream call(HashedFile hashedFile) throws IOException {
-								return new ByteArrayInputStream(cat);
-							}
-						}), indexFile, "root", rootPriKey);
+						new HashedFile.FileWrapper(f.getAbsolutePath(),
+								new HashedFile.ByteArrayInputStreamCallback(cat)),
+						indexFile, "root", rootPriKey);
 				FileUtils.writeByteArrayToFile(f, IOUtils.toByteArray(decryptableFile.getInputStream()));
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -242,13 +256,18 @@ public class GitHelper {
 		}
 	}
 
-	public static Map<String/* filename */, String/* hash */> readGitFileIndexFromIpfs(String repositoryName) {
+	public static IPFS getIpfs() {
 		String urlIpfs = URL_IPFS;
 		IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
+		return ipfs;
+	}
+
+	public static Map<String/* filename */, Two<String/* ipfs hash */, String/* sha1 */>> readGitFileIndexFromIpfs(
+			String repositoryName, IPFS ipfs) {
 		try {
 			IndexFile indexFile = readIndexFileFromIpfs(repositoryName);
 			if ("init".equals(indexFile.getProjectHash())) {
-				return new LinkedHashMap<String, String>();
+				return new LinkedHashMap<String, Two<String, String>>();
 			}
 			byte[] contentWithCompress = ipfs.cat(Multihash.fromBase58(indexFile.getProjectHash()));
 			return parseGitFilesIndex(contentWithCompress);
@@ -257,7 +276,8 @@ public class GitHelper {
 		}
 	}
 
-	public static String writeGitFileIndexToIpfs(Map<String/* filename */, String/* hash */> gitFileHash) {
+	public static String writeGitFileIndexToIpfs(
+			Map<String/* filename */, Two<String/* ipfs hash */, String/* sha1 */>> gitFileHash) {
 		String urlIpfs = URL_IPFS;
 		IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
 		try {
@@ -270,34 +290,37 @@ public class GitHelper {
 		}
 	}
 
-	public static Map<String/* filename */, String/* hash */> generateNewGitFileIndex(
-			Map<String/* relativePath */, File> current, Map<String/* filename */, String/* hash */> oldGitFileIndex,
-			Map<String/* filename */, String/* hash */> newGitFileIndex) {
-		Map<String, String> map = new LinkedHashMap<String, String>();
+	public static Map<String/* filename */, Two<String/* ipfs hash */, String/* sha1 */>> generateNewGitFileIndex(
+			Map<String/* relativePath */, File> current,
+			Map<String/* filename */, Two<String/* ipfs hash */, String/* sha1 */>> oldGitFileIndex,
+			Map<String/* filename */, Two<String/* ipfs hash */, String/* sha1 */>> newGitFileIndex) {
+		Map<String, Two<String, String>> map = new LinkedHashMap<String, Two<String, String>>();
 		for (Entry<String, File> entry : current.entrySet()) {
 			String key = entry.getKey();
-			map.put(key, StringUtils.defaultString(newGitFileIndex.get(key), oldGitFileIndex.get(key)));
+			Two<String, String> twoNew = newGitFileIndex.get(key);
+			Two<String, String> twoOld = oldGitFileIndex.get(key);
+			String ipfsHash = StringUtils.defaultString(twoNew == null ? null : twoNew.getFirst(),
+					twoOld == null ? null : twoOld.getFirst());
+			String sha1 = StringUtils.defaultString(twoNew == null ? null : twoNew.getSecond(),
+					twoOld == null ? null : twoOld.getSecond());
+			map.put(key, new Two<String, String>(ipfsHash, sha1));
 		}
 		return map;
 	}
 
-	public static Map<String/* filename */, String/* hash */> writeNewFileToIpfs(
-			Map<String/* relativePath */, File> newGitFile, IndexFile indexFile) {
-		Map<String, String> map = new HashMap<String, String>();
-		String urlIpfs = URL_IPFS;
-		IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
+	public static Map<String/* filename */, Two<String/* ipfs hash */, String/* sha1 */>> writeNewFileToIpfs(
+			Map<String/* relativePath */, File> newGitFile, IndexFile indexFile, IPFS ipfs) {
+		Map<String, Two<String, String>> map = new HashMap<String, Two<String, String>>();
 		try {
-			Map<String, String> hashMap = new HashMap<String, String>();
+			Map<String, Two<String, String>> hashMap = new HashMap<String, Two<String, String>>();
 			for (Entry<String, File> entry : newGitFile.entrySet()) {
 				ByteArrayInputStream bais = new ByteArrayInputStream(FileUtils.readFileToByteArray(entry.getValue()));
 				EncryptableFileWrapper file = new EncryptableFileWrapper(
-						new HashedFile.FileWrapper(entry.getKey(), new HashedFile.InputStreamCallback() {
-							public InputStream call(HashedFile hashedFile) throws IOException {
-								return bais;
-							}
-						}), indexFile);
+						new HashedFile.FileWrapper(entry.getKey(), new HashedFile.ByteArrayInputStreamCallback(bais)),
+						indexFile);
 				List<MerkleNode> add = ipfs.add(file);
-				hashMap.put(entry.getKey(), add.get(add.size() - 1).hash.toBase58());
+				hashMap.put(entry.getKey(),
+						new Two<String, String>(add.get(add.size() - 1).hash.toBase58(), sha1(entry.getValue())));
 				System.out.println(entry.getKey() + "==" + add.get(add.size() - 1).hash.toBase58());
 			}
 			for (Entry<String, File> entry : newGitFile.entrySet()) {
@@ -309,33 +332,55 @@ public class GitHelper {
 		return map;
 	}
 
-	public static Tuple.Two<Map<String, File>, Map<String, String>> diffGitFiles(
-			Map<String/* relativePath */, File> current, Map<String/* filename */, String/* hash */> gitFileIndex) {
+	public static Tuple.Two<Map<String, File>, Map<String, Two<String/* ipfs hash */, String/* sha1 */>>> diffGitFiles(
+			Map<String/* relativePath */, File> current,
+			Map<String/* filename */, Two<String/* ipfs hash */, String/* sha1 */>> gitFileIndex) {
 		Map<String, File> fileAdd = new HashMap<String, File>();
-		Map<String, String> fileRemove = new HashMap<String, String>();
+		Map<String, Two<String, String>> fileRemove = new HashMap<String, Two<String, String>>();
 		for (Entry<String, File> entry : current.entrySet()) {
 			String key = entry.getKey();
 			File file = entry.getValue();
-			if (!key.startsWith("objects/")) {
-				fileAdd.put(key, file);
+			if (!key.startsWith("objects/")) {// is not the hash object, so hash the file and compare the hash.
+				String sha1 = sha1(file);
+				Two<String, String> two = gitFileIndex.get(key);
+				if (two == null || !sha1.equals(two.getSecond())) {
+					fileAdd.put(key, file);
+				}
 				continue;
 			}
 			if (!gitFileIndex.containsKey(key)) {
 				fileAdd.put(key, file);
 			}
 		}
-		for (Entry<String, String> entry : gitFileIndex.entrySet()) {
+		for (Entry<String, Two<String, String>> entry : gitFileIndex.entrySet()) {
 			if (!current.containsKey(entry.getKey())) {
 				fileRemove.put(entry.getKey(), entry.getValue());
 			}
 		}
-		return new Tuple.Two<Map<String, File>, Map<String, String>>(fileAdd, fileRemove);
+		return new Tuple.Two<Map<String, File>, Map<String, Two<String, String>>>(fileAdd, fileRemove);
 	}
 
-	public static byte[] toGitFileIndexWithCompress(Map<String/* filename */, String/* hash */> gitFileIndex) {
+	public static String sha1(File file) {
+		FileInputStream is = null;
+		try {
+			is = new FileInputStream(file);
+			return Hex.encodeHexString(DigestUtils.sha1(is));
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		} finally {
+			try {
+				is.close();
+			} catch (Exception e) {
+			}
+		}
+	}
+
+	public static byte[] toGitFileIndexWithCompress(
+			Map<String/* filename */, Two<String/* ipfs hash */, String/* sha1 */>> gitFileIndex) {
 		StringBuilder sb = new StringBuilder();
-		for (Entry<String, String> entry : gitFileIndex.entrySet()) {
-			sb.append(entry.getValue()).append(',').append(entry.getKey()).append('\n');
+		for (Entry<String, Two<String, String>> entry : gitFileIndex.entrySet()) {
+			sb.append(entry.getValue().getFirst()).append(',').append(entry.getValue().getSecond()).append(',')
+					.append(entry.getKey()).append('\n');
 		}
 		try {
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -348,8 +393,9 @@ public class GitHelper {
 		}
 	}
 
-	public static Map<String/* filename */, String/* hash */> parseGitFilesIndex(byte[] contentWithCompress) {
-		Map<String, String> map = new LinkedHashMap<String, String>();
+	public static Map<String/* filename */, Two<String/* ipfs hash */, String/* sha1 */>> parseGitFilesIndex(
+			byte[] contentWithCompress) {
+		Map<String, Two<String, String>> map = new LinkedHashMap<String, Two<String, String>>();
 		if (contentWithCompress == null || contentWithCompress.length == 0) {
 			return map;
 		}
@@ -362,12 +408,11 @@ public class GitHelper {
 			String index = new String(out.toByteArray(), "UTF-8");
 			String[] lines = StringUtils.split(index, '\n');
 			for (String line : lines) {
-				int indexOf = line.indexOf(',');
-				if (indexOf < 0) {
+				String[] nameIpfsSha = StringUtils.split(line, ',');
+				if (nameIpfsSha.length != 3) {
 					continue;
 				}
-				String fileHash = line.substring(0, indexOf), fileName = line.substring(indexOf + 1);
-				map.put(fileName, fileHash);
+				map.put(nameIpfsSha[2], new Two<String, String>(nameIpfsSha[0], nameIpfsSha[1]));
 			}
 		} catch (Exception e) {
 			throw new RuntimeException(e);
@@ -454,7 +499,7 @@ public class GitHelper {
 	// }
 	// }
 
-	public static void updateProjectHash(File projectDir, String projectHash) {
+	public static String updateProjectHash(File projectDir, String projectHash) {
 		// update project hash to index file
 		String indexFileHash = readIndexFileHash(getProjectName(projectDir));
 		if (StringUtils.isBlank(indexFileHash)) {
@@ -464,6 +509,7 @@ public class GitHelper {
 		indexFile.setProjectHash(projectHash);
 		indexFileHash = writeIndexFileToIpfs(indexFile);
 		writeIndexFileHash(getProjectName(projectDir), indexFileHash);
+		return indexFileHash;
 	}
 
 	public static String getProjectName(File dir) {
