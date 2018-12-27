@@ -17,6 +17,7 @@ import io.ipfs.api.NamedStreamable;
 import io.ipfs.multihash.Multihash;
 
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -125,39 +126,55 @@ public class GitHelper {
 		}
 	}
 
-	public static String updateProject2(File projectDir) {
-		try {
-			updateServerInfo(projectDir);
-			String urlIpfs = URL_IPFS;
-			IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
-			// NamedStreamable.FileWrapper dir = new
-			// NamedStreamable.FileWrapper(projectDir);
-			IndexFile indexFile = readIndexFileFromIpfs(getProjectName(projectDir));
-			EncryptableFileWrapper dir = new EncryptableFileWrapper(
-					new HashedFile.FileSystemWrapper(projectDir.getAbsolutePath()), indexFile);
-			List<MerkleNode> add = ipfs.add(dir);
-			String hash = add.get(add.size() - 1).hash.toBase58();
-			System.out.println("Project name: " + projectDir.getPath() + ", hash: " + urlIpfs + ":8080/ipfs/" + hash);
-			updateProjectHash(projectDir, hash);
-			return hash;
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException(e);
-		}
-	}
-	
+	// public static String updateProject2(File projectDir) {
+	// try {
+	// updateServerInfo(projectDir);
+	// String urlIpfs = URL_IPFS;
+	// IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//")
+	// + "/tcp/5001");
+	// // NamedStreamable.FileWrapper dir = new
+	// // NamedStreamable.FileWrapper(projectDir);
+	// IndexFile indexFile = readIndexFileFromIpfs(getProjectName(projectDir));
+	// EncryptableFileWrapper dir = new EncryptableFileWrapper(
+	// new HashedFile.FileSystemWrapper(projectDir.getAbsolutePath()), indexFile);
+	// List<MerkleNode> add = ipfs.add(dir);
+	// String hash = add.get(add.size() - 1).hash.toBase58();
+	// System.out.println("Project name: " + projectDir.getPath() + ", hash: " +
+	// urlIpfs + ":8080/ipfs/" + hash);
+	// updateProjectHash(projectDir, hash);
+	// return hash;
+	// } catch (Exception e) {
+	// e.printStackTrace();
+	// throw new RuntimeException(e);
+	// }
+	// }
+
 	public static String updateProject(File projectDir) {
 		try {
-			//updateServerInfo(projectDir);
+			// updateServerInfo(projectDir);
 			String urlIpfs = URL_IPFS;
 			IndexFile indexFile = readIndexFileFromIpfs(getProjectName(projectDir));
 			Map<String, File> current = listGitFiles(projectDir);
+			for (Entry<String, File> entry : current.entrySet()) {
+				System.out.println("CURR:" + entry.getKey());
+			}
 			Map<String, String> oldGitFileIndex = readGitFileIndexFromIpfs(getProjectName(projectDir));
+			for (Entry<String, String> entry : oldGitFileIndex.entrySet()) {
+				System.out.println("OLD:" + entry.getKey());
+			}
 			Two<Map<String, File>, Map<String, String>> tuple = diffGitFiles(current, oldGitFileIndex);
 			Map<String, String> newGitFileIndexToIpfs = writeNewFileToIpfs(tuple.getFirst(), indexFile);
-			Map<String, String> newGitFileIndex = generateNewGitFileIndex(current, oldGitFileIndex, newGitFileIndexToIpfs);
+			for (Entry<String, String> entry : newGitFileIndexToIpfs.entrySet()) {
+				System.out.println("ADD:" + entry.getKey());
+			}
+			Map<String, String> newGitFileIndex = generateNewGitFileIndex(current, oldGitFileIndex,
+					newGitFileIndexToIpfs);
+			for (Entry<String, String> entry : newGitFileIndex.entrySet()) {
+				System.out.println("NEW:" + entry.getKey() + ", HASH:" + entry.getValue());
+			}
 			String gitFileIndexHash = writeGitFileIndexToIpfs(newGitFileIndex);
-			System.out.println("Project name: " + projectDir.getPath() + ", hash: " + urlIpfs + ":8080/ipfs/" + gitFileIndexHash);
+			System.out.println(
+					"Project name5: " + projectDir.getPath() + ", hash: " + urlIpfs + ":8080/ipfs/" + gitFileIndexHash);
 			updateProjectHash(projectDir, gitFileIndexHash);
 			return gitFileIndexHash;
 		} catch (Exception e) {
@@ -188,6 +205,12 @@ public class GitHelper {
 	}
 
 	public static void syncProjectByGitFileIndex(File dir) {
+		if (!dir.getAbsolutePath().startsWith(Directory.getGitBucketHome())) {
+			return;
+		}
+		if (dir.exists()) {
+			return;
+		}
 		Map<String, String> map = readGitFileIndexFromIpfs(getProjectName(dir));
 		if (map == null || map.isEmpty()) {
 			return;
@@ -198,9 +221,9 @@ public class GitHelper {
 		for (Entry<String, String> entry : map.entrySet()) {
 			String fileName = entry.getKey(), hash = entry.getValue();
 			int len = "objects/xx".length();
-			boolean isHashed = fileName.startsWith("objects") && fileName.length() > len && fileName.charAt(len) == '/';
+			boolean isHashed = fileName.startsWith("objects/")/* && fileName.length() > len && fileName.charAt(len) == '/'*/;
 			File f = new File(dir, fileName);
-			if (isHashed && f.isFile()) {
+			if (isHashed && f.exists()) {
 				continue;// file already exist.
 			}
 			f.getParentFile().mkdirs();
@@ -264,21 +287,18 @@ public class GitHelper {
 		String urlIpfs = URL_IPFS;
 		IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
 		try {
-			List<NamedStreamable> files = new ArrayList<NamedStreamable>();
+			Map<String, String> hashMap = new HashMap<String, String>();
 			for (Entry<String, File> entry : newGitFile.entrySet()) {
 				ByteArrayInputStream bais = new ByteArrayInputStream(FileUtils.readFileToByteArray(entry.getValue()));
-				EncryptableFileWrapper dir = new EncryptableFileWrapper(
+				EncryptableFileWrapper file = new EncryptableFileWrapper(
 						new HashedFile.FileWrapper(entry.getKey(), new HashedFile.InputStreamCallback() {
 							public InputStream call(HashedFile hashedFile) throws IOException {
 								return bais;
 							}
 						}), indexFile);
-				files.add(dir);
-			}
-			List<MerkleNode> add = ipfs.add(files, false, false);
-			Map<String, String> hashMap = new HashMap<String, String>();
-			for (MerkleNode mn : add) {
-				hashMap.put(mn.name.get(), mn.hash.toBase58());
+				List<MerkleNode> add = ipfs.add(file);
+				hashMap.put(entry.getKey(), add.get(add.size() - 1).hash.toBase58());
+				System.out.println(entry.getKey() + "==" + add.get(add.size() - 1).hash.toBase58());
 			}
 			for (Entry<String, File> entry : newGitFile.entrySet()) {
 				map.put(entry.getKey(), hashMap.get(entry.getKey()));
@@ -294,8 +314,14 @@ public class GitHelper {
 		Map<String, File> fileAdd = new HashMap<String, File>();
 		Map<String, String> fileRemove = new HashMap<String, String>();
 		for (Entry<String, File> entry : current.entrySet()) {
-			if (!gitFileIndex.containsKey(entry.getKey())) {
-				fileAdd.put(entry.getKey(), entry.getValue());
+			String key = entry.getKey();
+			File file = entry.getValue();
+			if (!key.startsWith("objects/")) {
+				fileAdd.put(key, file);
+				continue;
+			}
+			if (!gitFileIndex.containsKey(key)) {
+				fileAdd.put(key, file);
 			}
 		}
 		for (Entry<String, String> entry : gitFileIndex.entrySet()) {
@@ -349,80 +375,84 @@ public class GitHelper {
 		return map;
 	}
 
-	public static void syncProject(File dir) {
-		try {
-			if (dir.exists()) {
-				return;
-			}
-			dir.mkdirs();
-			String indexFileHash = readIndexFileHash(getProjectName(dir));
-			if (StringUtils.isBlank(indexFileHash)) {
-				return;
-			}
-			IndexFile indexFile = readIndexFileFromIpfs(getProjectName(dir));
-			String hash = indexFile.getProjectHash();
-			String urlIpfs = URL_IPFS;
-			IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
-			List<MerkleNode> ls = ipfs.ls(Multihash.fromBase58(hash));
-			Map map = ipfs.file.ls(Multihash.fromBase58(hash));
-			System.out.println(new ObjectMapper().writeValueAsString(map));
-			List<Map> folder = new LinkedList<Map>();
-			List<Map> files = new LinkedList<Map>();
-			{
-				folder.add(map);
-			}
-			Map temp = map;
-			while (folder.size() > 0 && (temp = folder.remove(0)) != null) {
-				String path = (String) temp.get("Path");
-				path = path == null ? "" : path;
-				if (temp.containsKey("Objects")) {// {Objects:{hash:{Type,Links:[{Type,Hash}]}}}
-					Map objs = (Map) temp.get("Objects");
-					for (Map.Entry entry : (Set<Map.Entry>) objs.entrySet()) {
-						Map folderMap = (Map) entry.getValue();
-						if ("Directory".equals(folderMap.get("Type"))) {
-							List<Map> links = (List<Map>) folderMap.get("Links");
-							for (Map m : links) {
-								m.put("Path", path + "/" + m.get("Name"));
-								if ("Directory".equals(m.get("Type"))) {
-									folder.add(m);
-									new File(dir, (String) m.get("Path")).mkdirs();
-								} else if ("File".equals(m.get("Type"))) {
-									files.add(m);
-								}
-							}
-						} else if ("File".equals(folderMap.get("Type"))) {
-							files.add(folderMap);
-						}
-					}
-				} else {// {Name,Hash,Size,Type}
-					Map hash1 = ipfs.file.ls(Multihash.fromBase58((String) temp.get("Hash")));
-					hash1.put("Path", path);
-					{
-						File f = new File(dir, (String) hash1.get("Path"));
-						f.getParentFile().mkdirs();
-					}
-					folder.add(hash1);
-				}
-			}
-			for (Map file : files) {
-				String fileName = (String) file.get("Path");
-				File f = new File(dir, fileName);
-				f.getParentFile().mkdirs();
-				DecryptableFileWrapper decryptableFile = new DecryptableFileWrapper(
-						new HashedFile.FileWrapper(f.getAbsolutePath(), new HashedFile.InputStreamCallback() {
-							public InputStream call(HashedFile hashedFile) throws IOException {
-								return new ByteArrayInputStream(
-										ipfs.cat(Multihash.fromBase58((String) file.get("Hash"))));
-							}
-						}), indexFile, "root", rootPriKey);
-				FileUtils.writeByteArrayToFile(f, IOUtils.toByteArray(decryptableFile.getInputStream()));
-			}
-			System.out.println(new ObjectMapper().writeValueAsString(files));
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException(e);
-		}
-	}
+	// public static void syncProject(File dir) {
+	// try {
+	// if (dir.exists()) {
+	// return;
+	// }
+	// dir.mkdirs();
+	// String indexFileHash = readIndexFileHash(getProjectName(dir));
+	// if (StringUtils.isBlank(indexFileHash)) {
+	// return;
+	// }
+	// IndexFile indexFile = readIndexFileFromIpfs(getProjectName(dir));
+	// String hash = indexFile.getProjectHash();
+	// String urlIpfs = URL_IPFS;
+	// IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//")
+	// + "/tcp/5001");
+	// List<MerkleNode> ls = ipfs.ls(Multihash.fromBase58(hash));
+	// Map map = ipfs.file.ls(Multihash.fromBase58(hash));
+	// System.out.println(new ObjectMapper().writeValueAsString(map));
+	// List<Map> folder = new LinkedList<Map>();
+	// List<Map> files = new LinkedList<Map>();
+	// {
+	// folder.add(map);
+	// }
+	// Map temp = map;
+	// while (folder.size() > 0 && (temp = folder.remove(0)) != null) {
+	// String path = (String) temp.get("Path");
+	// path = path == null ? "" : path;
+	// if (temp.containsKey("Objects")) {//
+	// {Objects:{hash:{Type,Links:[{Type,Hash}]}}}
+	// Map objs = (Map) temp.get("Objects");
+	// for (Map.Entry entry : (Set<Map.Entry>) objs.entrySet()) {
+	// Map folderMap = (Map) entry.getValue();
+	// if ("Directory".equals(folderMap.get("Type"))) {
+	// List<Map> links = (List<Map>) folderMap.get("Links");
+	// for (Map m : links) {
+	// m.put("Path", path + "/" + m.get("Name"));
+	// if ("Directory".equals(m.get("Type"))) {
+	// folder.add(m);
+	// new File(dir, (String) m.get("Path")).mkdirs();
+	// } else if ("File".equals(m.get("Type"))) {
+	// files.add(m);
+	// }
+	// }
+	// } else if ("File".equals(folderMap.get("Type"))) {
+	// files.add(folderMap);
+	// }
+	// }
+	// } else {// {Name,Hash,Size,Type}
+	// Map hash1 = ipfs.file.ls(Multihash.fromBase58((String) temp.get("Hash")));
+	// hash1.put("Path", path);
+	// {
+	// File f = new File(dir, (String) hash1.get("Path"));
+	// f.getParentFile().mkdirs();
+	// }
+	// folder.add(hash1);
+	// }
+	// }
+	// for (Map file : files) {
+	// String fileName = (String) file.get("Path");
+	// File f = new File(dir, fileName);
+	// f.getParentFile().mkdirs();
+	// DecryptableFileWrapper decryptableFile = new DecryptableFileWrapper(
+	// new HashedFile.FileWrapper(f.getAbsolutePath(), new
+	// HashedFile.InputStreamCallback() {
+	// public InputStream call(HashedFile hashedFile) throws IOException {
+	// return new ByteArrayInputStream(
+	// ipfs.cat(Multihash.fromBase58((String) file.get("Hash"))));
+	// }
+	// }), indexFile, "root", rootPriKey);
+	// FileUtils.writeByteArrayToFile(f,
+	// IOUtils.toByteArray(decryptableFile.getInputStream()));
+	// }
+	// System.out.println(new ObjectMapper().writeValueAsString(files));
+	// } catch (Exception e) {
+	// e.printStackTrace();
+	// throw new RuntimeException(e);
+	// }
+	// }
 
 	public static void updateProjectHash(File projectDir, String projectHash) {
 		// update project hash to index file
@@ -437,18 +467,17 @@ public class GitHelper {
 	}
 
 	public static String getProjectName(File dir) {
-		if (dir.exists() && dir.isDirectory()) {
-			String path = dir.getAbsolutePath();
-			if (path.endsWith(".git")) {
-				return dir.getParentFile().getName() + "/" + dir.getName();
-			}
+		String path = dir.getAbsolutePath();
+		if (path.endsWith(".git")) {
+			return dir.getParentFile().getName() + "/" + dir.getName();
 		}
-		throw new RuntimeException("GitHelper can not get project name!");
+		throw new RuntimeException("GitHelper can not get project name !");
 	}
 
 	public static Git open(File dir) {
 		try {
-			syncProject(dir);
+			// syncProject(dir);
+			syncProjectByGitFileIndex(dir);
 			return MyGit.open(dir);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
