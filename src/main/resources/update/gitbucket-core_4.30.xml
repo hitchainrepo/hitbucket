@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<changeSet>
+  <addColumn tableName="ACCOUNT">
+    <column name="PRI_KEY" type="varchar(200)" nullable="true"/>
+    <column name="PUB_KEY" type="varchar(200)" nullable="true"/>
+    <column name="PUB_ADDRESS" type="varchar(100)" nullable="true"/>
+    <column name="ACCOUNT_TYPE" type="varchar(100)" nullable="true"/>
+  </addColumn>
+  <addColumn tableName="REPOSITORY">
+    <column name="INDEX_HASH" type="varchar(200)" nullable="true"/>
+  </addColumn>
+</changeSet>
