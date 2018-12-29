@@ -1001,7 +1001,7 @@ public class JGitUtilHelper {
      * @return
      */
     public static String updateProject(File dir){
-        return GitHelper.updateProject(dir);
+        return GitHelper.updateProject(dir, null);
     }
 
     /**

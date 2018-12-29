@@ -400,7 +400,8 @@ class CommitLogHook(owner: String, repository: String, pusher: String, baseUrl: 
         updateLastActivityDate(owner, repository)
 
         // ==更新项目==
-        JGitUtil.updateProject(getRepositoryDir(owner, repository))
+        var indexHash = JGitUtil.updateProject(getRepositoryDir(owner, repository), getIndexHash(owner, repository).get)
+        updateIndexHash(owner, repository, indexHash)
       } catch {
         case ex: Exception => {
           logger.error(ex.toString, ex)
@@ -469,7 +470,9 @@ class WikiCommitHook(owner: String, repository: String, pusher: String, baseUrl:
         }
 
         // ==更新项目==
-        JGitUtil.updateProject(Directory.getWikiRepositoryDir(owner, repository))
+        var indexHash =
+          JGitUtil.updateProject(Directory.getWikiRepositoryDir(owner, repository), getIndexHash(owner, repository).get)
+        updateIndexHash(owner, repository, indexHash)
       } catch {
         case ex: Exception => {
           logger.error(ex.toString, ex)

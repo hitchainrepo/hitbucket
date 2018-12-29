@@ -178,7 +178,11 @@ trait AccountService {
       image = None,
       isGroupAccount = false,
       isRemoved = false,
-      description = description
+      description = description,
+      priKey = None,
+      pubKey = None,
+      pubAddress = None,
+      accountType = None
     )
 
   def suspendAccount(account: Account)(implicit s: Session): Unit = {
@@ -206,7 +210,11 @@ trait AccountService {
           a.updatedDate,
           a.lastLoginDate.?,
           a.removed,
-          a.description.?
+          a.description.?,
+          a.priKey.?,
+          a.pubKey.?,
+          a.pubAddress.?,
+          a.accountType.?
         )
       }
       .update(
@@ -219,7 +227,11 @@ trait AccountService {
         currentDate,
         account.lastLoginDate,
         account.isRemoved,
-        account.description
+        account.description,
+        account.priKey,
+        account.pubKey,
+        account.pubAddress,
+        account.accountType
       )
 
   def updateAvatarImage(userName: String, image: Option[String])(implicit s: Session): Unit =
@@ -251,7 +263,11 @@ trait AccountService {
       image = None,
       isGroupAccount = true,
       isRemoved = false,
-      description = description
+      description = description,
+      priKey = None,
+      pubKey = None,
+      pubAddress = None,
+      accountType = None
     )
 
   def updateGroup(groupName: String, description: Option[String], url: Option[String], removed: Boolean)(

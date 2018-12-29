@@ -62,7 +62,11 @@ trait ApiRepositoryCommitControllerBase extends ControllerBase {
         image = None,
         isGroupAccount = false,
         isRemoved = true,
-        description = None
+        description = None,
+        priKey = None,
+        pubKey = None,
+        pubAddress = None,
+        accountType = None
       )
     }
   }

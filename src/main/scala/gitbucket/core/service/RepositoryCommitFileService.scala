@@ -15,7 +15,12 @@ import org.eclipse.jgit.lib._
 import org.eclipse.jgit.transport.{ReceiveCommand, ReceivePack}
 
 trait RepositoryCommitFileService {
-  self: AccountService with ActivityService with IssuesService with PullRequestService with WebHookPullRequestService =>
+  self: AccountService
+    with ActivityService
+    with IssuesService
+    with PullRequestService
+    with WebHookPullRequestService
+    with RepositoryService =>
   import RepositoryCommitFileService._
 
   def commitFiles(
@@ -178,7 +183,11 @@ trait RepositoryCommitFileService {
             }
         }
         // ==更新项目==
-        JGitUtil.updateProject(getRepositoryDir(repository.owner, repository.name))
+        var indexHash = JGitUtil.updateProject(
+          getRepositoryDir(repository.owner, repository.name),
+          repository.repository.indexHash.get
+        )
+        updateIndexHash(repository.owner, repository.name, indexHash)
       }
     }
   }

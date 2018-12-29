@@ -274,7 +274,16 @@ object JGitUtil {
    * @return
    */
   def updateProject(dir: File): String = {
-    GitHelper.updateProject(dir)
+    GitHelper.updateProject(dir, null)
+  }
+
+  /**
+   * Add by tylerchen
+   * @param dir
+   * @return
+   */
+  def updateProject(dir: File, indexHash: String): String = {
+    GitHelper.updateProject(dir, indexHash)
   }
 
   /**

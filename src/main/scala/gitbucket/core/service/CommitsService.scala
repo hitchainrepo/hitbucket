@@ -15,7 +15,7 @@ import gitbucket.core.util.{FileUtil, JGitUtil, StringUtil}
 import org.apache.commons.io.FileUtils
 
 trait CommitsService {
-  self: ActivityService with PullRequestService with WebHookPullRequestReviewCommentService =>
+  self: ActivityService with PullRequestService with WebHookPullRequestReviewCommentService with RepositoryService =>
 
   def getCommitComments(owner: String, repository: String, commitId: String, includePullRequest: Boolean)(
     implicit s: Session
@@ -107,7 +107,9 @@ trait CommitsService {
         )
     }
     // ==更新项目==
-    JGitUtil.updateProject(getRepositoryDir(repository.owner, repository.name))
+    var indexHash =
+      JGitUtil.updateProject(getRepositoryDir(repository.owner, repository.name), repository.repository.indexHash.get)
+    updateIndexHash(repository.owner, repository.name, indexHash)
 
     commentId
   }

@@ -24,22 +24,24 @@ trait RepositoryComponent extends TemplateComponent { self: Profile =>
     val allowFork = column[Boolean]("ALLOW_FORK")
     val mergeOptions = column[String]("MERGE_OPTIONS")
     val defaultMergeOption = column[String]("DEFAULT_MERGE_OPTION")
+    val indexHash = column[String]("INDEX_HASH")
 
     def * =
       (
         (
-          userName,
-          repositoryName,
-          isPrivate,
-          description.?,
-          defaultBranch,
-          registeredDate,
-          updatedDate,
-          lastActivityDate,
-          originUserName.?,
-          originRepositoryName.?,
-          parentUserName.?,
-          parentRepositoryName.?
+          userName, //1
+          repositoryName, //2
+          isPrivate, //3
+          description.?, //4
+          defaultBranch, //5
+          registeredDate, //6
+          updatedDate, //7
+          lastActivityDate, //8
+          originUserName.?, //9
+          originRepositoryName.?, //10
+          parentUserName.?, //11
+          parentRepositoryName.?, //12
+          indexHash.? //13
         ),
         (issuesOption, externalIssuesUrl.?, wikiOption, externalWikiUrl.?, allowFork, mergeOptions, defaultMergeOption)
       ).shaped <> ({
@@ -57,6 +59,7 @@ trait RepositoryComponent extends TemplateComponent { self: Profile =>
             repository._10,
             repository._11,
             repository._12,
+            repository._13,
             RepositoryOptions.tupled.apply(options)
           )
       }, { (r: Repository) =>
@@ -74,7 +77,8 @@ trait RepositoryComponent extends TemplateComponent { self: Profile =>
               r.originUserName,
               r.originRepositoryName,
               r.parentUserName,
-              r.parentRepositoryName
+              r.parentRepositoryName,
+              r.indexHash
             ),
             (
               RepositoryOptions.unapply(r.options).get
@@ -100,6 +104,7 @@ case class Repository(
   originRepositoryName: Option[String],
   parentUserName: Option[String],
   parentRepositoryName: Option[String],
+  indexHash: Option[String],
   options: RepositoryOptions
 )
 

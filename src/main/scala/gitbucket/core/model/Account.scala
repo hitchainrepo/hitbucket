@@ -20,6 +20,10 @@ trait AccountComponent { self: Profile =>
     val groupAccount = column[Boolean]("GROUP_ACCOUNT")
     val removed = column[Boolean]("REMOVED")
     val description = column[String]("DESCRIPTION")
+    val priKey = column[String]("PRI_KEY")
+    val pubKey = column[String]("PUB_KEY")
+    val pubAddress = column[String]("PUB_ADDRESS")
+    val accountType = column[String]("ACCOUNT_TYPE")
     def * =
       (
         userName,
@@ -34,7 +38,11 @@ trait AccountComponent { self: Profile =>
         image.?,
         groupAccount,
         removed,
-        description.?
+        description.?,
+        priKey.?,
+        pubKey.?,
+        pubAddress.?,
+        accountType.?
       ) <> (Account.tupled, Account.unapply)
   }
 }
@@ -52,5 +60,9 @@ case class Account(
   image: Option[String],
   isGroupAccount: Boolean,
   isRemoved: Boolean,
-  description: Option[String]
+  description: Option[String],
+  priKey: Option[String],
+  pubKey: Option[String],
+  pubAddress: Option[String],
+  accountType: Option[String]
 )

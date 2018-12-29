@@ -166,7 +166,8 @@ trait RepositoryCreationService {
         PluginRegistry().getRepositoryHooks.foreach(_.created(owner, name))
 
         // ==更新项目==
-        JGitUtil.updateProject(gitdir)
+        var indexHash = JGitUtil.updateProject(gitdir, null)
+        updateIndexHash(owner, name, indexHash)
       }
 
       RepositoryCreationService.endCreation(owner, name, None)
@@ -236,7 +237,8 @@ trait RepositoryCreationService {
           PluginRegistry().getRepositoryHooks.foreach(_.forked(repository.owner, accountName, repository.name))
 
           // ==更新项目==
-          JGitUtil.updateProject(getRepositoryDir(accountName, repository.name))
+          var indexHash = JGitUtil.updateProject(getRepositoryDir(accountName, repository.name), null)
+          updateIndexHash(accountName, repository.name, indexHash)
 
           RepositoryCreationService.endCreation(accountName, repository.name, None)
         }

@@ -153,8 +153,9 @@ public class GitHelper {
 	// }
 	// }
 
-	public static String updateProject(File projectDir) {
+	public static String updateProject(File projectDir, String indexHash) {
 		try {
+			System.out.println("==indexHash from db==" + indexHash);
 			// updateServerInfo(projectDir);
 			String urlIpfs = URL_IPFS;
 			IPFS ipfs = getIpfs();
@@ -188,7 +189,7 @@ public class GitHelper {
 			String indexFileHash = updateProjectHash(projectDir, gitFileIndexHash);
 			System.out.println("Project name: " + projectDir.getPath() + ", indexFileHash: " + urlIpfs + ":8080/ipfs/"
 					+ indexFileHash);
-			return gitFileIndexHash;
+			return indexFileHash;
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);

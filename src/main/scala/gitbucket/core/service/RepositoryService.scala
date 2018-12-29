@@ -39,7 +39,8 @@ trait RepositoryService {
     originRepositoryName: Option[String] = None,
     originUserName: Option[String] = None,
     parentRepositoryName: Option[String] = None,
-    parentUserName: Option[String] = None
+    parentUserName: Option[String] = None,
+    indexHash: Option[String] = None
   )(implicit s: Session): Unit = {
     Repositories insert
       Repository(
@@ -55,6 +56,7 @@ trait RepositoryService {
         originRepositoryName = originRepositoryName,
         parentUserName = parentUserName,
         parentRepositoryName = parentRepositoryName,
+        indexHash = indexHash,
         options = RepositoryOptions(
           issuesOption = "PUBLIC", // TODO DISABLE for the forked repository?
           externalIssuesUrl = None,
@@ -552,6 +554,22 @@ trait RepositoryService {
    */
   def updateLastActivityDate(userName: String, repositoryName: String)(implicit s: Session): Unit = {
     Repositories.filter(_.byRepository(userName, repositoryName)).map(_.lastActivityDate).update(currentDate)
+  }
+
+  /**
+   * Updates the last index hash of the repository.
+   * add by tylerchen
+   */
+  def updateIndexHash(userName: String, repositoryName: String, indexHash: String)(implicit s: Session): Unit = {
+    Repositories.filter(_.byRepository(userName, repositoryName)).map(_.indexHash).update(indexHash)
+  }
+
+  /**
+   * get the last index hash of the repository.
+   * add by tylerchen
+   */
+  def getIndexHash(userName: String, repositoryName: String)(implicit s: Session): Option[String] = {
+    Repositories.filter(_.byRepository(userName, repositoryName)).map(_.indexHash).firstOption
   }
 
   /**

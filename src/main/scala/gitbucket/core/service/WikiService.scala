@@ -214,6 +214,7 @@ trait WikiService {
 
           // ==更新项目==
           JGitUtil.updateProject(Directory.getWikiRepositoryDir(owner, repository))
+        //TODO wiki repository updateIndexHash(owner, repository, indexHash)
         }
       }
       true
@@ -295,7 +296,7 @@ trait WikiService {
 
           // ==更新项目==
           JGitUtil.updateProject(Directory.getWikiRepositoryDir(owner, repository))
-
+          //TODO wiki repository updateIndexHash(owner, repository, indexHash)
           Some(newHeadId.getName)
         } else None
       }
@@ -343,6 +344,7 @@ trait WikiService {
 
         // ==更新项目==
         JGitUtil.updateProject(Directory.getWikiRepositoryDir(owner, repository))
+      //TODO wiki repository updateIndexHash(owner, repository, indexHash)
       }
     }
   }
