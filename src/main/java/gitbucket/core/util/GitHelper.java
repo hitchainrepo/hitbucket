@@ -36,6 +36,7 @@ import org.hitchain.hit.api.HashedFile.ByteArrayInputStreamCallback;
 import org.hitchain.hit.api.IndexFile;
 import org.hitchain.hit.util.ByteUtils;
 import org.hitchain.hit.util.ECCUtil;
+import org.hitchain.hit.util.RSAUtil;
 
 import java.io.*;
 import java.util.*;
@@ -278,6 +279,9 @@ public class GitHelper {
 			File projectDir) {
 		try {
 			File gitFileIndex = new File(projectDir, "objects/pack/gitfile.idx");
+			if(!gitFileIndex.exists()) {
+				return parseGitFilesIndex(null);
+			}
 			byte[] contentWithCompress = FileUtils.readFileToByteArray(gitFileIndex);
 			return parseGitFilesIndex(contentWithCompress);
 		} catch (Exception e) {
@@ -492,8 +496,7 @@ public class GitHelper {
 	}
 
 	public static String getHashFromFile(String fileName) {
-		String[] repositoryName = StringUtils.split(fileName);
-		return readProjectHash(Directory.getRepositoryDir(repositoryName[0], repositoryName[1]));
+		return readProjectHash(new File(fileName));
 	}
 
 	public static IndexFile readIndexFileFromIpfs(File projectDir) {
@@ -507,8 +510,7 @@ public class GitHelper {
 				indexFile.setOwner("root");
 				indexFile.setOwnerPublicKey(rootPubKeyRsa);
 				indexFile.setRepositoryPublicKey(repoPubKey);
-				indexFile.setRepositoryPrivateKeyEncrypted(Hex.encodeHexString(ECCUtil.publicEncrypt(
-						repoPriKey.getBytes(), ECCUtil.getPublicKeyFromEthereumPublicKeyHex(rootPubKey))));
+				indexFile.setRepositoryPrivateKeyEncrypted(Hex.encodeHexString(RSAUtil.encrypt(repoPriKey.getBytes(), RSAUtil.getPrivateKeyFromBase64(rootPriKeyRsa))));
 				writeUpdateFile(file, ByteUtils.utf8(indexFile.getSignedContent(rootPriKeyRsa)));
 			}
 			byte[] content = FileUtils.readFileToByteArray(file);
