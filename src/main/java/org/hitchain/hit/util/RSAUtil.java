@@ -1,18 +1,26 @@
 package org.hitchain.hit.util;
 
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.binary.Hex;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-
-import javax.crypto.Cipher;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.security.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.security.Key;
+import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.Security;
+import java.security.Signature;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+
+import javax.crypto.Cipher;
+
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.lang3.StringUtils;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 /**
  * this code copy from:
@@ -280,47 +288,16 @@ public class RSAUtil {
 	/**
 	 * Encrypt file using 1024 RSA encryption
 	 *
-	 * @param srcFileName
-	 *            Source file name
-	 * @param destFileName
-	 *            Destination file name
+	 * @param content
+	 * @param key
 	 * @param key
 	 *            The key. public/private key
 	 */
-	public static void encryptFile(String srcFileName, String destFileName, Key key) {
-		encryptDecryptFile(srcFileName, destFileName, key, Cipher.ENCRYPT_MODE);
-	}
-
-	/**
-	 * Decrypt file using 1024 RSA encryption
-	 *
-	 * @param srcFileName
-	 *            Source file name
-	 * @param destFileName
-	 *            Destination file name
-	 * @param key
-	 *            The key. public/private key
-	 */
-	public static void decryptFile(String srcFileName, String destFileName, Key key) {
-		encryptDecryptFile(srcFileName, destFileName, key, Cipher.DECRYPT_MODE);
-	}
-
-	/**
-	 * Encrypt and Decrypt files using 1024 RSA encryption
-	 *
-	 * @param srcFileName
-	 *            Source file name
-	 * @param destFileName
-	 *            Destination file name
-	 * @param key
-	 *            The key. For encryption this is the Private Key and for decryption
-	 *            this is the public key
-	 * @param cipherMode
-	 *            Cipher Mode
-	 */
-	public static void encryptDecryptFile(String srcFileName, String destFileName, Key key, int cipherMode) {
-		OutputStream outputWriter = null;
-		InputStream inputReader = null;
+	public static byte[] encryptLargeContent(byte[] content, Key key) {
+		if (content == null || content.length == 0) {
+			return new byte[0];
+		}
+		ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
 		try {
 			Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", BouncyCastleProvider.PROVIDER_NAME);
 			// RSA encryption data size limitations are slightly less than the key modulus
@@ -329,36 +306,103 @@ public class RSAUtil {
 			// RSA key,
 			// the size limit is 117 bytes for PKCS#1 v 1.5 padding.
 			// (http://www.jensign.com/JavaScience/dotnet/RSAEncrypt/)
-			byte[] buf = cipherMode == Cipher.ENCRYPT_MODE ? new byte[100] : new byte[128];
+			ByteArrayInputStream bais = new ByteArrayInputStream(content);
+			byte[] buf = new byte[100];
 			int bufl;
 			// init the Cipher object for Encryption...
-			cipher.init(cipherMode, key);
-			// start FileIO
-			outputWriter = new FileOutputStream(destFileName);
-			inputReader = new FileInputStream(srcFileName);
-			while ((bufl = inputReader.read(buf)) != -1) {
-				byte[] encText = null;
-				if (cipherMode == Cipher.ENCRYPT_MODE) {
-					encText = encrypt(copyBytes(buf, bufl), (PublicKey) key);
-				} else {
-					encText = decrypt(copyBytes(buf, bufl), (PrivateKey) key);
-				}
-				outputWriter.write(encText);
+			cipher.init(Cipher.ENCRYPT_MODE, key);
+			while ((bufl = bais.read(buf)) != -1) {
+				baos.write(encrypt(copyBytes(buf, bufl), key));
 			}
-			outputWriter.flush();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
-		} finally {
-			try {
-				if (outputWriter != null) {
-					outputWriter.close();
-				}
-				if (inputReader != null) {
-					inputReader.close();
-				}
-			} catch (Exception e) {
-				// do nothing...
-			} // end of inner try, catch (Exception)...
+		}
+		return baos.toByteArray();
+	}
+
+	/**
+	 * Decrypt file using 1024 RSA encryption
+	 *
+	 * @param content
+	 * @param key
+	 *            The key. public/private key
+	 */
+	public static byte[] decryptLargeContent(byte[] content, Key key) {
+		if (content == null) {
+			return null;
+		}
+		if (content.length == 0) {
+			return new byte[0];
+		}
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		try {
+			Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", BouncyCastleProvider.PROVIDER_NAME);
+			// RSA encryption data size limitations are slightly less than the key modulus
+			// size,
+			// depending on the actual padding scheme used (e.g. with 1024 bit (128 byte)
+			// RSA key,
+			// the size limit is 117 bytes for PKCS#1 v 1.5 padding.
+			// (http://www.jensign.com/JavaScience/dotnet/RSAEncrypt/)
+			ByteArrayInputStream bais = new ByteArrayInputStream(content);
+			byte[] buf = new byte[128];
+			int bufl;
+			// init the Cipher object for Encryption...
+			cipher.init(Cipher.DECRYPT_MODE, key);
+			while ((bufl = bais.read(buf)) != -1) {
+				baos.write(decrypt(copyBytes(buf, bufl), key));
+			}
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		return baos.toByteArray();
+	}
+
+	/**
+	 * <p>
+	 * 用私钥对信息生成数字签名
+	 * </p>
+	 * 
+	 * @param data
+	 *            已加密数据
+	 * @param privateKey
+	 *            私钥(BASE64编码)
+	 * @return
+	 * @throws Exception
+	 */
+	public static byte[] sign(byte[] data, PrivateKey priKey) {
+		try {
+			Signature signature = Signature.getInstance("MD5withRSA");
+			signature.initSign(priKey);
+			signature.update(data);
+			return signature.sign();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	/**
+	 * <p>
+	 * 校验数字签名
+	 * </p>
+	 * 
+	 * @param data
+	 *            已加密数据
+	 * @param publicKey
+	 *            公钥(BASE64编码)
+	 * @param sign
+	 *            数字签名
+	 * @return
+	 * @throws Exception
+	 * 
+	 */
+	public static boolean verify(byte[] data, byte[] sign, PublicKey pubKey) {
+		try {
+			Signature signature = Signature.getInstance("MD5withRSA");
+			signature.initVerify(pubKey);
+			signature.update(data);
+			return signature.verify(sign);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -375,18 +419,28 @@ public class RSAUtil {
 		return newArr;
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		KeyPair kp = generateKey();
 		String pubKey = getKeyAsBase64(kp.getPublic());
 		String priKey = getKeyAsBase64(kp.getPrivate());
 		System.out.println(pubKey);
 		System.out.println(priKey);
-		String encrypt = encrypt("helloworld!helloworld!helloworld!helloworld!helloworld!helloworld", getPublicKeyFromBase64(pubKey));
+		String encrypt = encrypt("helloworld!helloworld!helloworld!helloworld!helloworld!helloworld",
+				getPublicKeyFromBase64(pubKey));
 		System.out.println(encrypt);
 		System.out.println(decrypt(encrypt, getPrivateKeyFromBase64(priKey)));
 		System.out.println("PUB-KEY Base64:" + pubKey);
 		System.out.println("PUB-KEY HEX:" + getKeyAsHex(kp.getPublic()));
 		System.out.println("PRI-KEY Base64:" + priKey);
 		System.out.println("PRI-KEY HEX:" + getKeyAsHex(kp.getPrivate()));
+		System.out.println("============");
+		byte[] largeText = encryptLargeContent(
+				ByteUtils.utf8(
+						StringUtils.repeat("helloworld!helloworld!helloworld!helloworld!helloworld!helloworld", 100)),
+				getPublicKeyFromBase64(pubKey));
+		System.out.println(ByteUtils.utf8(decryptLargeContent(largeText, getPrivateKeyFromBase64(priKey))));
+		System.out.println("============");
+		byte[] sign = sign(largeText, getPrivateKeyFromBase64(priKey));
+		System.out.println("Verify:" + verify(largeText, sign, getPublicKeyFromBase64(pubKey)));
 	}
 }
