@@ -149,11 +149,9 @@ public class GitHelper {
 			// updateServerInfo(projectDir);
 			String urlIpfs = URL_IPFS;
 			IPFS ipfs = getIpfs();
-			String projectName = getProjectName(projectDir);
 			IndexFile oldIndexFile = readIndexFileFromIpfs(projectDir);
 			Map<String, Two<String/* ipfs hash */, String/* sha1 */>> oldGitFileIndex = readGitFileIndexFromIpfs(
 					projectDir);
-			String oldProjectHash = readProjectHash(projectDir);
 			for (Entry<String, Two<String, String>> entry : oldGitFileIndex.entrySet()) {
 				System.out.println("OLD:" + entry.getKey());
 			}
