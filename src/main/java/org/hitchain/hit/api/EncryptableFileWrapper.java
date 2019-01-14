@@ -31,57 +31,58 @@ import java.util.Optional;
  * auto generate by qdp.
  */
 public class EncryptableFileWrapper implements NamedStreamable {
-    private final HashedFile source;
-    private final IndexFile indexFile;
+	private final HashedFile source;
+	private final ProjectInfoFile projectInfoFile;
 
-    public EncryptableFileWrapper(HashedFile source, IndexFile indexFile) {
-        if (source == null) {
-            throw new IllegalStateException("EncryptableFileWrapper HashedFile does not exist: " + source);
-        } else {
-            this.source = source;
-        }
-        if (indexFile == null) {
-            throw new IllegalStateException("EncryptableFileWrapper IndexFile does not exist: " + indexFile);
-        } else {
-            this.indexFile = indexFile;
-        }
-    }
+	public EncryptableFileWrapper(HashedFile source, ProjectInfoFile projectInfoFile) {
+		if (source == null) {
+			throw new IllegalStateException("EncryptableFileWrapper HashedFile does not exist: " + source);
+		} else {
+			this.source = source;
+		}
+		if (projectInfoFile == null) {
+			throw new IllegalStateException(
+					"EncryptableFileWrapper ProjectInfoFile does not exist: " + projectInfoFile);
+		} else {
+			this.projectInfoFile = projectInfoFile;
+		}
+	}
 
-    public InputStream getInputStream() throws IOException {
-        if (indexFile.isPrivate()) {
-            try {
-                PublicKey publicKey = ECCUtil.getPublicKeyFromEthereumPublicKeyHex(indexFile.getRepositoryPublicKey());
-                InputStream is = source.getInputStream();
-                byte[] bytes = ECCUtil.publicEncrypt(is, publicKey);
-                return new ByteArrayInputStream(bytes);
-            } catch (Exception e) {
-                throw new IOException(e);
-            }
-        }
-        return source.getInputStream();
-    }
+	public InputStream getInputStream() throws IOException {
+		if (projectInfoFile.isPrivate()) {
+			try {
+				PublicKey publicKey = ECCUtil.getPublicKeyFromEthereumPublicKeyHex(projectInfoFile.getRepoPubKey());
+				InputStream is = source.getInputStream();
+				byte[] bytes = ECCUtil.publicEncrypt(is, publicKey);
+				return new ByteArrayInputStream(bytes);
+			} catch (Exception e) {
+				throw new IOException(e);
+			}
+		}
+		return source.getInputStream();
+	}
 
-    public boolean isDirectory() {
-        return this.source.isDirectory();
-    }
+	public boolean isDirectory() {
+		return this.source.isDirectory();
+	}
 
-    public List<NamedStreamable> getChildren() {
-        if (source.isDirectory()) {
-            List<HashedFile> children = source.getChildren();
-            List<NamedStreamable> list = new ArrayList<>();
-            for (HashedFile hf : children) {
-                list.add(new EncryptableFileWrapper(hf, indexFile));
-            }
-            return list;
-        }
-        return Collections.emptyList();
-    }
+	public List<NamedStreamable> getChildren() {
+		if (source.isDirectory()) {
+			List<HashedFile> children = source.getChildren();
+			List<NamedStreamable> list = new ArrayList<>();
+			for (HashedFile hf : children) {
+				list.add(new EncryptableFileWrapper(hf, projectInfoFile));
+			}
+			return list;
+		}
+		return Collections.emptyList();
+	}
 
-    public Optional<String> getName() {
-        try {
-            return Optional.of(URLEncoder.encode(new File(this.source.getName()).getName(), "UTF-8"));
-        } catch (UnsupportedEncodingException var2) {
-            throw new RuntimeException(var2);
-        }
-    }
+	public Optional<String> getName() {
+		try {
+			return Optional.of(URLEncoder.encode(new File(this.source.getName()).getName(), "UTF-8"));
+		} catch (UnsupportedEncodingException var2) {
+			throw new RuntimeException(var2);
+		}
+	}
 }
