@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
+import org.bouncycastle.util.encoders.Hex;
+import org.hitchain.hit.api.ProjectInfoFile.TeamInfo;
 import org.hitchain.hit.util.ECCUtil;
 import org.hitchain.hit.util.RSAUtil;
 
@@ -32,51 +34,57 @@ import io.ipfs.api.NamedStreamable;
  */
 public class DecryptableFileWrapper implements NamedStreamable {
 	private final HashedFile source;
-	private final IndexFile indexFile;
-	private final String account;
-	private final String privateKey;
+	private final ProjectInfoFile projectInfoFile;
+	private final String member;
+	private final String priKeyRsa;
 
-	public DecryptableFileWrapper(HashedFile source, IndexFile indexFile, String account, String privateKey) {
+	public DecryptableFileWrapper(HashedFile source, ProjectInfoFile projectInfoFile, String member, String priKeyRsa) {
 		if (source == null) {
 			throw new IllegalStateException("DecryptableFileWrapper HashedFile does not exist: " + source);
 		} else {
 			this.source = source;
 		}
-		if (indexFile == null) {
-			throw new IllegalStateException("DecryptableFileWrapper IndexFile does not exist: " + indexFile);
+		if (projectInfoFile == null) {
+			throw new IllegalStateException(
+					"DecryptableFileWrapper ProjectInfoFile does not exist: " + projectInfoFile);
 		} else {
-			this.indexFile = indexFile;
+			this.projectInfoFile = projectInfoFile;
 		}
-		if (indexFile.isPrivate() && StringUtils.isBlank(account)) {
-			throw new IllegalStateException("DecryptableFileWrapper account does not exist: " + account);
+		if (projectInfoFile.isPrivate() && StringUtils.isBlank(member)) {
+			throw new IllegalStateException("DecryptableFileWrapper member does not exist: " + member);
 		} else {
-			this.account = account;
+			this.member = member;
 		}
-		if (indexFile.isPrivate() && StringUtils.isBlank(privateKey)) {
-			throw new IllegalStateException("DecryptableFileWrapper privateKey does not exist: " + privateKey);
+		if (projectInfoFile.isPrivate() && StringUtils.isBlank(priKeyRsa)) {
+			throw new IllegalStateException("DecryptableFileWrapper privateKey does not exist: " + priKeyRsa);
 		} else {
-			this.privateKey = privateKey;
+			this.priKeyRsa = priKeyRsa;
 		}
 	}
 
 	public InputStream getInputStream() throws IOException {
-		if (indexFile.isPrivate()) {
+		if (projectInfoFile.isPrivate()) {
 			String encrypt = null;
-			if (account.equals(indexFile.getOwner()) || account.equals(indexFile.getOwnerPublicKey())) {// #if is owner, get the repository encrypted private key.
-				encrypt = indexFile.getRepositoryPrivateKeyEncrypted();
-			} else if (indexFile.getMemberKeys().containsKey(account)) {// #if is member account, get the member repository encrypted private key.
-				encrypt = indexFile.getMemberRepositoryKeys().get(indexFile.getMemberKeys().get(account));
-			} else if (indexFile.getMemberRepositoryKeys().containsKey(account)) {// #if account is public key, get the member repository encrypted private key.
-				encrypt = indexFile.getMemberRepositoryKeys().get(account);
+			if (StringUtils.equalsAny(member, projectInfoFile.getOwner(), projectInfoFile.getOwnerPubKeyRsa(),
+					projectInfoFile.getOwnerAddressEcc())) {// #if is owner, get the repository encrypted private key.
+				encrypt = projectInfoFile.getRepoPriKey();
+			} else {
+				for (TeamInfo ti : projectInfoFile.getMembers()) {
+					if (StringUtils.equalsAny(member, ti.getMember(), ti.getMemberPubKeyRsa(),
+							ti.getMemberAddressEcc())) {
+						encrypt = ti.getMemberRepoPriKey();
+					}
+				}
 			}
 			try {
 				if (encrypt == null) {
 					return source.getInputStream();
 				}
-				byte[] repositoryPrivateKey = RSAUtil.decrypt(encrypt.getBytes(), RSAUtil.getPrivateKeyFromBase64(privateKey));
+				byte[] repositoryPrivateKey = RSAUtil.decrypt(encrypt.getBytes(),
+						RSAUtil.getPrivateKeyFromHex(priKeyRsa));
 				InputStream is = source.getInputStream();
 				byte[] bytes = ECCUtil.privateDecrypt(is,
-						ECCUtil.getPrivateKeyFromEthereumHex(new String(repositoryPrivateKey)));
+						ECCUtil.getPrivateKeyFromEthereumHex(Hex.toHexString(repositoryPrivateKey)));
 				is.close();
 				return new ByteArrayInputStream(bytes);
 			} catch (Exception e) {
@@ -95,7 +103,7 @@ public class DecryptableFileWrapper implements NamedStreamable {
 			List<HashedFile> children = source.getChildren();
 			List<NamedStreamable> list = new ArrayList<>();
 			for (HashedFile hf : children) {
-				list.add(new DecryptableFileWrapper(hf, indexFile, account, privateKey));
+				list.add(new DecryptableFileWrapper(hf, projectInfoFile, member, priKeyRsa));
 			}
 			return list;
 		}
