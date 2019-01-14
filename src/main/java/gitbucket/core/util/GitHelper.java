@@ -8,13 +8,20 @@
  ******************************************************************************/
 package gitbucket.core.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import gitbucket.core.util.Tuple.Two;
-import io.ipfs.api.IPFS;
-import io.ipfs.api.MerkleNode;
-import io.ipfs.api.NamedStreamable;
-import io.ipfs.multihash.Multihash;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -32,20 +39,17 @@ import org.eclipse.jgit.lib.StoredConfig;
 import org.hitchain.hit.api.DecryptableFileWrapper;
 import org.hitchain.hit.api.EncryptableFileWrapper;
 import org.hitchain.hit.api.HashedFile;
-import org.hitchain.hit.api.HashedFile.ByteArrayInputStreamCallback;
 import org.hitchain.hit.api.ProjectInfoFile;
 import org.hitchain.hit.util.ByteUtils;
-import org.hitchain.hit.util.ECCUtil;
 import org.hitchain.hit.util.ECKey;
 import org.hitchain.hit.util.EthereumUtils;
 import org.hitchain.hit.util.RSAUtil;
 
-import java.io.*;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
+import gitbucket.core.util.Tuple.Two;
+import io.ipfs.api.IPFS;
+import io.ipfs.api.MerkleNode;
+import io.ipfs.api.NamedStreamable;
+import io.ipfs.multihash.Multihash;
 
 /**
  * GitHelper
@@ -55,15 +59,12 @@ import java.util.zip.GZIPOutputStream;
  */
 public class GitHelper {
 
-	public static final String URL_IPFS = System.getProperty("URL_IPFS", "http://121.40.127.45");
+	public static final String URL_IPFS = System.getProperty("URL_IPFS", "121.40.127.45"/*"http://121.40.127.45"*/);
 	public static final String URL_ETHER = System.getProperty("URL_ETHER", "https://localhost:1443");
 	private static final String rootPubKeyEcc = "0x837a4bbef0f7235b8fdb03c55d0d98f27f49cda8";
 	private static final String rootPriKeyEcc = "448b60044aec0065a08115d7af1038491830f697c36118e046e38cf7002ee45b";
 	private static final String rootPubKeyRsa = "30819f300d06092a864886f70d010101050003818d0030818902818100df6c814a1b827317370607e207a8749f12497d4ea339cd4f4a38df3690c9d24eb279852780105ed4f7a493833b0ed27409b74eb58b1a452a66be052146ee1f5fb0fa42231221f22cd73e70026b606862b91365fdbe6b2af79838eaa38db60dddc01ecf78f6881880ad399e65747fe86f5e844f5cd4b40f6de8c3e8e60db343290203010001";
 	private static final String rootPriKeyRsa = "30820275020100300d06092a864886f70d01010105000482025f3082025b02010002818100df6c814a1b827317370607e207a8749f12497d4ea339cd4f4a38df3690c9d24eb279852780105ed4f7a493833b0ed27409b74eb58b1a452a66be052146ee1f5fb0fa42231221f22cd73e70026b606862b91365fdbe6b2af79838eaa38db60dddc01ecf78f6881880ad399e65747fe86f5e844f5cd4b40f6de8c3e8e60db343290203010001028180549653eca6b5a0b52d53cf30380e02f926874435bd7e68c8982527fd149c144f4f2acacac5a56d01dc3026d90c46f44e924f2031835492d316cae24e52f85c4fbd1a340b7b4f60f758631f16955d8503a154858f129a0d66268b9a929caaa1e1ff944c861a13c28e2d0869a93f8ffc508450339856de7869b8dbcce66dbde7b1024100f63fb36a8067288e16e2d63b4dda45bf7e8ebf00e34ac4514d169cfe50aba01a1d4785fe38226893814bda6c49a7888aa4a9a108045ac2db9c65ffecdefb5eeb024100e8456b9fb09c93280b3cf1364b00b997bb3293b7f95dba8cd48bd1ef734c64cd51cdb6140948a058f9588b9f4495ce88ba5790e663e711f730f296c7f602693b02407c498e8ef49c1c960aeb16e1fbdb6d54c7d5d885e432ba7fa67f016242e93cf7b14b864fd799565b0ce9722731cdc356e6e14f0bb2d6f47ecfa393d6c47cef5d02401a5b8e5bffc1b4dd4d712bfa3a46a9c8f320492d0e6a397a33c06e215b172735397c3b96487b6a5ece64e2eb3ef03510c4fc9cdfd82467a0827874edda17e9f3024002afe2f48990647b96526c6f2ddfee427a21fafd02ad982981425372587c14f742f1c1133a0f34084436cf78b0a55484fbb547f20077b937da7e5569f63a5ad9";
-	//private static final String repoPubKey = "049ae393b50e15339f82916408d2118275256d900118452d192a2ff35d54b86f6a3902cc95c9d38ed400935fd1d17cf6ef4160de29316fd71344b144841bed4cb3";
-	//private static final String repoPriKey = "347112b59aca1665911c501568a82b8ec597e069e19cfd7e53b7623ce09c59d3";
-	private static final ReentrantReadWriteLock indexFileLock = new ReentrantReadWriteLock();
 
 	public static void main(String[] args) throws Exception {
 		// System.out.println(listGitFiles(new
@@ -242,7 +243,7 @@ public class GitHelper {
 
 	public static IPFS getIpfs() {
 		String urlIpfs = URL_IPFS;
-		IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
+		IPFS ipfs = new IPFS(urlIpfs, 5001, "/api/v0/", false) ;
 		return ipfs;
 	}
 
@@ -262,8 +263,7 @@ public class GitHelper {
 
 	public static String writeGitFileIndexToIpfs(File projectDir,
 			Map<String/* filename */, Two<String/* ipfs hash */, String/* sha1 */>> gitFileHash) {
-		String urlIpfs = URL_IPFS;
-		IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
+		IPFS ipfs = getIpfs();
 		try {
 			byte[] gitFileIndexWithCompress = toGitFileIndexWithCompress(gitFileHash);
 			File gitFileIndex = new File(projectDir, "objects/pack/gitfile.idx");
@@ -483,7 +483,7 @@ public class GitHelper {
 					info.setRepoPubKey(Hex.toHexString(repoKeyPair.getPubKey()));
 					info.setRepoPriKey(Hex.toHexString(RSAUtil.encrypt(repoKeyPair.getPrivKeyBytes(),
 							RSAUtil.getPublicKeyFromHex(rootPubKeyRsa))));
-					String address = EthereumUtils.createContractForProject(URL_ETHER, rootPriKeyEcc,
+					String address = EthereumUtils.createContractForProject(URL_ETHER, rootPubKeyEcc,
 							info.getRepoName());
 					if (address == null) {
 						throw new RuntimeException("Can't not create contract for project!");
