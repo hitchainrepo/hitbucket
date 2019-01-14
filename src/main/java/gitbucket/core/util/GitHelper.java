@@ -16,11 +16,11 @@ import io.ipfs.api.MerkleNode;
 import io.ipfs.api.NamedStreamable;
 import io.ipfs.multihash.Multihash;
 
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.bouncycastle.util.encoders.Hex;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.internal.storage.file.LockFile;
@@ -33,9 +33,11 @@ import org.hitchain.hit.api.DecryptableFileWrapper;
 import org.hitchain.hit.api.EncryptableFileWrapper;
 import org.hitchain.hit.api.HashedFile;
 import org.hitchain.hit.api.HashedFile.ByteArrayInputStreamCallback;
-import org.hitchain.hit.api.IndexFile;
+import org.hitchain.hit.api.ProjectInfoFile;
 import org.hitchain.hit.util.ByteUtils;
 import org.hitchain.hit.util.ECCUtil;
+import org.hitchain.hit.util.ECKey;
+import org.hitchain.hit.util.EthereumUtils;
 import org.hitchain.hit.util.RSAUtil;
 
 import java.io.*;
@@ -54,19 +56,20 @@ import java.util.zip.GZIPOutputStream;
 public class GitHelper {
 
 	public static final String URL_IPFS = System.getProperty("URL_IPFS", "http://121.40.127.45");
-	private static final String rootPubKey = "04e86b10fae9a5df60b31f853f200cf6ed4a2eecdbbbf1f35a6e2053f1a0a23894eaa746565b689715c4f11b4db2e441c6746276014e1266f26f4e073c16762c7e";
-	private static final String rootPriKey = "ce837abb3be97434f9bcb3e0e0be6c2f8c122ff40d5ced32d715ac7cce15383a";
-	private static final String rootPubKeyRsa = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCOg6USlEHh5LRb/hCerCZWk5JxzWqNQWMGMNMhqihII9YfFwcjaECc+BJQ0b+49g8TaXk6zuIM1AQpjQ4mvUZY7u/rPsUc37mCSyJCUhgJrFJp4HyIkxmJOhy1Ow+ttBT0/zIWXXq70WIstRtOjn5xGPJ8XjbPGHHZ1hyDu6ti2wIDAQAB";
-	private static final String rootPriKeyRsa = "MIICdQIBADANBgkqhkiG9w0BAQEFAASCAl8wggJbAgEAAoGBAI6DpRKUQeHktFv+EJ6sJlaTknHNao1BYwYw0yGqKEgj1h8XByNoQJz4ElDRv7j2DxNpeTrO4gzUBCmNDia9Rlju7+s+xRzfuYJLIkJSGAmsUmngfIiTGYk6HLU7D620FPT/MhZdervRYiy1G06OfnEY8nxeNs8YcdnWHIO7q2LbAgMBAAECgYAjOPMj7+OGlpVjBRyLcuW40RlJKilTBx2XyppsABebmMvTfEgF3r7VbNRuCCEX8CySsidFuxsQa5gpwtSEC5SmiNa7Rvg+Pu0TYoG90yQX5f9/oRWnZ4eHQCEbHVu0jbcC/Vr+a2Jc77CgIK2mZO6S8R2bYXzq9QZ2Ykt4+l3qrQJBAMSZIEofd4CX1lFsHnU/Fi71tDC2UheffprcwssCWMhGmVuMCDbigY9RkM+Zkyh5s1YiShwlMt62qUBgVJf8am0CQQC5kyBOj5Q0bfMCYOQdjdZyXRI7HyWvzMieR7IKij1DLreeNkdTsoefTAvUePuc0IwrizEwk3DHWjRTnBBy5DVnAkBHoRr4prpdqfS2OdRnF5M3jOIYFXWXkc8JEYIPgU1juwVJK54akTBvTWKboPLS/nRu35Ns6ci9CIRmJjLsJVWJAkBlzfnOP2Qtsxe6eU8Li5FWogprVrYFEJIKiwh4Ucg0AAAJkntkxi8yy7Q9trVKHPqYtL6iiHA5XRoRuC8p6FoHAkBqTdHMZKQi/VbCHJsMhpz2hXGVe8aEUo72aTQFgjx0GX4CLKjDav+LghMfVuVsbV4DZWh8kRlZQtPLU0gNQwNg";
-	private static final String repoPubKey = "04e027cf70f2e8b083c04ef6a55ddcb8af9af19af36c9f0cb63a4c052ee4cae260c0c455c75ce33bf8401dad5092d6b6a97382cd1f807b536b273b46abe99d6e04";
-	private static final String repoPriKey = "68f5f0a7c29ebd7c6b23ac0c45b90cf0dc0e357eba2b746bf153790ca253ec13";
+	public static final String URL_ETHER = System.getProperty("URL_ETHER", "https://localhost:1443");
+	private static final String rootPubKeyEcc = "0x837a4bbef0f7235b8fdb03c55d0d98f27f49cda8";
+	private static final String rootPriKeyEcc = "448b60044aec0065a08115d7af1038491830f697c36118e046e38cf7002ee45b";
+	private static final String rootPubKeyRsa = "30819f300d06092a864886f70d010101050003818d0030818902818100df6c814a1b827317370607e207a8749f12497d4ea339cd4f4a38df3690c9d24eb279852780105ed4f7a493833b0ed27409b74eb58b1a452a66be052146ee1f5fb0fa42231221f22cd73e70026b606862b91365fdbe6b2af79838eaa38db60dddc01ecf78f6881880ad399e65747fe86f5e844f5cd4b40f6de8c3e8e60db343290203010001";
+	private static final String rootPriKeyRsa = "30820275020100300d06092a864886f70d01010105000482025f3082025b02010002818100df6c814a1b827317370607e207a8749f12497d4ea339cd4f4a38df3690c9d24eb279852780105ed4f7a493833b0ed27409b74eb58b1a452a66be052146ee1f5fb0fa42231221f22cd73e70026b606862b91365fdbe6b2af79838eaa38db60dddc01ecf78f6881880ad399e65747fe86f5e844f5cd4b40f6de8c3e8e60db343290203010001028180549653eca6b5a0b52d53cf30380e02f926874435bd7e68c8982527fd149c144f4f2acacac5a56d01dc3026d90c46f44e924f2031835492d316cae24e52f85c4fbd1a340b7b4f60f758631f16955d8503a154858f129a0d66268b9a929caaa1e1ff944c861a13c28e2d0869a93f8ffc508450339856de7869b8dbcce66dbde7b1024100f63fb36a8067288e16e2d63b4dda45bf7e8ebf00e34ac4514d169cfe50aba01a1d4785fe38226893814bda6c49a7888aa4a9a108045ac2db9c65ffecdefb5eeb024100e8456b9fb09c93280b3cf1364b00b997bb3293b7f95dba8cd48bd1ef734c64cd51cdb6140948a058f9588b9f4495ce88ba5790e663e711f730f296c7f602693b02407c498e8ef49c1c960aeb16e1fbdb6d54c7d5d885e432ba7fa67f016242e93cf7b14b864fd799565b0ce9722731cdc356e6e14f0bb2d6f47ecfa393d6c47cef5d02401a5b8e5bffc1b4dd4d712bfa3a46a9c8f320492d0e6a397a33c06e215b172735397c3b96487b6a5ece64e2eb3ef03510c4fc9cdfd82467a0827874edda17e9f3024002afe2f48990647b96526c6f2ddfee427a21fafd02ad982981425372587c14f742f1c1133a0f34084436cf78b0a55484fbb547f20077b937da7e5569f63a5ad9";
+	//private static final String repoPubKey = "049ae393b50e15339f82916408d2118275256d900118452d192a2ff35d54b86f6a3902cc95c9d38ed400935fd1d17cf6ef4160de29316fd71344b144841bed4cb3";
+	//private static final String repoPriKey = "347112b59aca1665911c501568a82b8ec597e069e19cfd7e53b7623ce09c59d3";
 	private static final ReentrantReadWriteLock indexFileLock = new ReentrantReadWriteLock();
 
 	public static void main(String[] args) throws Exception {
 		// System.out.println(listGitFiles(new
 		// File("/Users/zhaochen/.gitbucket/repositories/root/test.git")));
 		System.out.println(new Multihash(Multihash.Type.sha1, DigestUtils.sha1("hello")).toBase58());
-		System.out.println(Hex.encodeHexString(DigestUtils.sha1("hello")));
+		System.out.println(Hex.toHexString(DigestUtils.sha1("hello")));
 		// addEncryptRepository();
 		// syncProject(new
 		// File("/Users/zhaochen/.gitbucket/repositories/root/test.git"));
@@ -120,36 +123,13 @@ public class GitHelper {
 		}
 	}
 
-	// public static String updateProject2(File projectDir) {
-	// try {
-	// updateServerInfo(projectDir);
-	// String urlIpfs = URL_IPFS;
-	// IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//")
-	// + "/tcp/5001");
-	// // NamedStreamable.FileWrapper dir = new
-	// // NamedStreamable.FileWrapper(projectDir);
-	// IndexFile indexFile = readIndexFileFromIpfs(getProjectName(projectDir));
-	// EncryptableFileWrapper dir = new EncryptableFileWrapper(
-	// new HashedFile.FileSystemWrapper(projectDir.getAbsolutePath()), indexFile);
-	// List<MerkleNode> add = ipfs.add(dir);
-	// String hash = add.get(add.size() - 1).hash.toBase58();
-	// System.out.println("Project name: " + projectDir.getPath() + ", hash: " +
-	// urlIpfs + ":8080/ipfs/" + hash);
-	// updateProjectHash(projectDir, hash);
-	// return hash;
-	// } catch (Exception e) {
-	// e.printStackTrace();
-	// throw new RuntimeException(e);
-	// }
-	// }
-
 	public static String updateProject(File projectDir, String indexHash) {
 		try {
 			System.out.println("==indexHash from db==" + indexHash);
 			// updateServerInfo(projectDir);
 			String urlIpfs = URL_IPFS;
 			IPFS ipfs = getIpfs();
-			IndexFile oldIndexFile = readIndexFileFromIpfs(projectDir);
+			ProjectInfoFile projectInfoFile = readProjectInfoFile(projectDir);
 			Map<String, Two<String/* ipfs hash */, String/* sha1 */>> oldGitFileIndex = readGitFileIndexFromIpfs(
 					projectDir);
 			for (Entry<String, Two<String, String>> entry : oldGitFileIndex.entrySet()) {
@@ -160,14 +140,14 @@ public class GitHelper {
 			for (Entry<String, File> entry : current.entrySet()) {
 				System.out.println("CURR:" + entry.getKey());
 			}
-			// #2. IndexFile changed by owner: add team member or change the key
+			// #2. ProjectInfoFile changed by owner: add team member or change the key
 			// TODO
 			// #3. get the change files
 			Two<Map<String, File>, Map<String, Two<String/* ipfs hash */, String/* sha1 */>>> tuple = diffGitFiles(
 					current, oldGitFileIndex);
 			// #4. write changed file to ipfs
 			Map<String, Two<String/* ipfs hash */, String/* sha1 */>> newGitFileIndexToIpfs = writeNewFileToIpfs(
-					tuple.getFirst(), oldIndexFile, ipfs);
+					tuple.getFirst(), projectInfoFile, ipfs);
 			for (Entry<String, Two<String, String>> entry : newGitFileIndexToIpfs.entrySet()) {
 				System.out.println("ADD:" + entry.getKey());
 			}
@@ -182,7 +162,7 @@ public class GitHelper {
 			String gitFileIndexHash = writeGitFileIndexToIpfs(projectDir, newGitFileIndex);
 			System.out.println("Project name0: " + projectDir.getPath() + ", gitFileHash: " + urlIpfs + ":8080/ipfs/"
 					+ gitFileIndexHash);
-			String newProjectHash = updateProjectHash(projectDir, gitFileIndexHash);
+			updateProjectAddress(projectInfoFile, gitFileIndexHash);
 			// #7. update gitFileIndexHash to newGitFileIndex
 			{
 				Two<String, String> two = newGitFileIndex.get("objects/pack/gitfile.idx");
@@ -190,13 +170,6 @@ public class GitHelper {
 				two.setFirst(gitFileIndexHash);
 				two.setSecond(sha1(new File(projectDir, "objects/pack/gitfile.idx")));
 				newGitFileIndex.put("objects/pack/gitfile.idx", two);
-			}
-			{
-				Two<String, String> two = newGitFileIndex.get("objects/info/projecthash");
-				two = two == null ? new Two<>() : two;
-				two.setFirst(newProjectHash);
-				two.setSecond(sha1(new File(projectDir, "objects/info/projecthash")));
-				newGitFileIndex.put("objects/info/projecthash", two);
 			}
 			gitFileIndexHash = writeGitFileIndexToIpfs(projectDir, newGitFileIndex);
 			return gitFileIndexHash;
@@ -240,7 +213,7 @@ public class GitHelper {
 		if (map == null || map.isEmpty()) {
 			return;
 		}
-		IndexFile indexFile = readIndexFileFromIpfs(projectDir);
+		ProjectInfoFile indexFile = readProjectInfoFile(projectDir);
 		for (Entry<String, Two<String, String>> entry : map.entrySet()) {
 			String fileName = entry.getKey(), ipfsHash = entry.getValue().getFirst(),
 					sha1 = entry.getValue().getSecond();
@@ -259,7 +232,7 @@ public class GitHelper {
 				DecryptableFileWrapper decryptableFile = new DecryptableFileWrapper(
 						new HashedFile.FileWrapper(f.getAbsolutePath(),
 								new HashedFile.ByteArrayInputStreamCallback(cat)),
-						indexFile, "root", rootPriKey);
+						indexFile, "root", rootPriKeyEcc);
 				FileUtils.writeByteArrayToFile(f, IOUtils.toByteArray(decryptableFile.getInputStream()));
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -277,7 +250,7 @@ public class GitHelper {
 			File projectDir) {
 		try {
 			File gitFileIndex = new File(projectDir, "objects/pack/gitfile.idx");
-			if(!gitFileIndex.exists()) {
+			if (!gitFileIndex.exists()) {
 				return parseGitFilesIndex(null);
 			}
 			byte[] contentWithCompress = FileUtils.readFileToByteArray(gitFileIndex);
@@ -323,7 +296,7 @@ public class GitHelper {
 	}
 
 	public static Map<String/* filename */, Two<String/* ipfs hash */, String/* sha1 */>> writeNewFileToIpfs(
-			Map<String/* relativePath */, File> newGitFile, IndexFile indexFile, IPFS ipfs) {
+			Map<String/* relativePath */, File> newGitFile, ProjectInfoFile projectInfoFile, IPFS ipfs) {
 		Map<String, Two<String, String>> map = new HashMap<String, Two<String, String>>();
 		Map<String, Two<String, String>> hashMap = new HashMap<String, Two<String, String>>();
 		for (Entry<String, File> entry : newGitFile.entrySet()) {
@@ -331,7 +304,7 @@ public class GitHelper {
 				ByteArrayInputStream bais = new ByteArrayInputStream(FileUtils.readFileToByteArray(entry.getValue()));
 				EncryptableFileWrapper file = new EncryptableFileWrapper(
 						new HashedFile.FileWrapper(entry.getKey(), new HashedFile.ByteArrayInputStreamCallback(bais)),
-						indexFile);
+						projectInfoFile);
 				List<MerkleNode> add = ipfs.add(file);
 				hashMap.put(entry.getKey(),
 						new Two<String, String>(add.get(add.size() - 1).hash.toBase58(), sha1(entry.getValue())));
@@ -378,7 +351,7 @@ public class GitHelper {
 		FileInputStream is = null;
 		try {
 			is = new FileInputStream(file);
-			return Hex.encodeHexString(DigestUtils.sha1(is));
+			return Hex.toHexString(DigestUtils.sha1(is));
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		} finally {
@@ -434,20 +407,9 @@ public class GitHelper {
 		return map;
 	}
 
-	public static String updateProjectHash(File projectDir, String projectHash) {
-		String urlIpfs = URL_IPFS;
-		IPFS ipfs = new IPFS("/ip4/" + StringUtils.substringAfterLast(urlIpfs, "//") + "/tcp/5001");
-		try {
-			// update project hash to objects/info/projecthash file
-			File projectHashFile = new File(projectDir, "objects/info/projecthash");
-			writeUpdateFile(projectHashFile, ByteUtils.utf8(projectHash));
-			NamedStreamable.ByteArrayWrapper file = new NamedStreamable.ByteArrayWrapper("projecthash",
-					ByteUtils.utf8(projectHash));
-			List<MerkleNode> add = ipfs.add(file);
-			return add.get(add.size() - 1).hash.toBase58();
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
+	public static void updateProjectAddress(ProjectInfoFile projectInfoFile, String newProjectAddress) {
+		EthereumUtils.updateProjectAddress(URL_ETHER, projectInfoFile.getRepoAddress(),
+				EthereumUtils.encryptPriKeyEcc(URL_ETHER, rootPriKeyEcc), newProjectAddress);
 	}
 
 	public static String readProjectHash(File projectDir) {
@@ -468,6 +430,14 @@ public class GitHelper {
 			return dir.getParentFile().getName() + "/" + dir.getName();
 		}
 		throw new RuntimeException("GitHelper can not get project name !");
+	}
+
+	public static String getProjectOwner(File dir) {
+		String path = dir.getAbsolutePath();
+		if (path.endsWith(".git")) {
+			return dir.getParentFile().getName();
+		}
+		throw new RuntimeException("GitHelper can not get project owner !");
 	}
 
 	public static Git open(File dir) {
@@ -494,25 +464,39 @@ public class GitHelper {
 	}
 
 	public static String getHashFromFile(String fileName) {
-		return readProjectHash(new File(fileName));
+		return EthereumUtils.getProjectAddress(URL_ETHER, readProjectInfoFile(new File(fileName)).getRepoAddress());
+		//return readProjectHash(new File(fileName));
 	}
 
-	public static IndexFile readIndexFileFromIpfs(File projectDir) {
+	public static ProjectInfoFile readProjectInfoFile(File projectDir) {
 		try {
 			File file = new File(projectDir, "objects/info/projectinfo");
 			if (!file.exists()) {
 				// is new project
-				IndexFile indexFile = new IndexFile();
-				indexFile.setVersion("1");
-				indexFile.setProjectName(getProjectName(projectDir));
-				indexFile.setOwner("root");
-				indexFile.setOwnerPublicKey(rootPubKeyRsa);
-				indexFile.setRepositoryPublicKey(repoPubKey);
-				indexFile.setRepositoryPrivateKeyEncrypted(Hex.encodeHexString(RSAUtil.encrypt(repoPriKey.getBytes(), RSAUtil.getPrivateKeyFromBase64(rootPriKeyRsa))));
-				writeUpdateFile(file, ByteUtils.utf8(indexFile.getSignedContent(rootPriKeyRsa)));
+				ProjectInfoFile info = new ProjectInfoFile();
+				{
+					info.setVersion("1");
+					info.setEthereumUrl("https://localhost:1443");
+					info.setFileServerUrl(URL_IPFS);
+					info.setRepoName(getProjectName(projectDir));
+					ECKey repoKeyPair = new ECKey();
+					info.setRepoPubKey(Hex.toHexString(repoKeyPair.getPubKey()));
+					info.setRepoPriKey(Hex.toHexString(RSAUtil.encrypt(repoKeyPair.getPrivKeyBytes(),
+							RSAUtil.getPublicKeyFromHex(rootPubKeyRsa))));
+					String address = EthereumUtils.createContractForProject(URL_ETHER, rootPriKeyEcc,
+							info.getRepoName());
+					if (address == null) {
+						throw new RuntimeException("Can't not create contract for project!");
+					}
+					info.setRepoAddress(address);
+					info.setOwner(getProjectOwner(projectDir));
+					info.setOwnerPubKeyRsa(rootPubKeyRsa);
+					info.setOwnerAddressEcc(rootPubKeyEcc);
+				}
+				writeUpdateFile(file, ByteUtils.utf8(info.genSignedContent(rootPriKeyRsa)));
 			}
 			byte[] content = FileUtils.readFileToByteArray(file);
-			return IndexFile.fromFile(
+			return ProjectInfoFile.fromFile(
 					new HashedFile.FileWrapper("objects/info/projectinfo", new HashedFile.InputStreamCallback() {
 						public InputStream call(HashedFile hashedFile) throws IOException {
 							return new ByteArrayInputStream(content);
@@ -523,95 +507,8 @@ public class GitHelper {
 		}
 	}
 
-	public static void writeIndexFileToIpfs(File projectDir, IndexFile indexFile) {
+	public static void writeIndexFileToIpfs(File projectDir, ProjectInfoFile projectInfoFile) {
 		writeUpdateFile(new File(projectDir, "objects/info/projectinfo"),
-				ByteUtils.utf8(indexFile.getSignedContent(rootPriKeyRsa)));
+				ByteUtils.utf8(projectInfoFile.genSignedContent(rootPriKeyRsa)));
 	}
-
-	// public static void writeIndexFileHash(String repositoryName, String hash) {
-	// indexFileLock.writeLock().lock();
-	// try {
-	// String file = System.getProperty("HASH_FILE",
-	// "/Users/zhaochen/Desktop/IndexFileHash.txt");
-	// File hashFile = new File(file);
-	// if (!hashFile.exists()) {
-	// hashFile.createNewFile();
-	// }
-	// byte[] datas = (repositoryName + ":" + hash + ":").getBytes("UTF-8");
-	// byte[] line = new byte[100];
-	// RandomAccessFile raf = new RandomAccessFile(hashFile, "rw");
-	// long length = raf.length(), pos = 0;
-	// boolean found = false;
-	// while (length > pos) {
-	// raf.seek(pos);
-	// raf.read(line);// file pointer is change
-	// raf.seek(pos);
-	// pos += line.length;
-	// String str = new String(line, "UTF-8");
-	// if (!(str.startsWith(repositoryName) && str.charAt(repositoryName.length())
-	// == ':')) {
-	// continue;
-	// }
-	// if (datas.length > 100) {
-	// throw new RuntimeException("GitHelper repository name and hash is too long
-	// (over 200)!");
-	// }
-	// Arrays.fill(line, (byte) ' ');
-	// line[line.length - 1] = '\n';
-	// System.arraycopy(datas, 0, line, 0, datas.length);
-	// raf.write(line);
-	// found = true;
-	// break;
-	// }
-	// if (!found) {
-	// Arrays.fill(line, (byte) ' ');
-	// line[line.length - 1] = '\n';
-	// System.arraycopy(datas, 0, line, 0, datas.length);
-	// raf.seek(raf.length());
-	// raf.write(line);
-	// }
-	// raf.close();
-	// } catch (Exception e) {
-	// throw new RuntimeException(e);
-	// } finally {
-	// indexFileLock.writeLock().unlock();
-	// }
-	// }
-
-	// public static String readIndexFileHash(String repositoryName) {
-	// indexFileLock.readLock().lock();
-	// try {
-	// String file = System.getProperty("HASH_FILE",
-	// "/Users/zhaochen/Desktop/IndexFileHash.txt");
-	// File hashFile = new File(file);
-	// if (!hashFile.exists()) {
-	// hashFile.createNewFile();
-	// }
-	// byte[] line = new byte[100];
-	// RandomAccessFile raf = new RandomAccessFile(hashFile, "r");
-	// long length = raf.length(), pos = 0;
-	// String hash = null;
-	// while (length > pos) {
-	// raf.seek(pos);
-	// raf.read(line);
-	// pos += line.length;
-	// String str = new String(line, "UTF-8");
-	// if (!(str.startsWith(repositoryName) && str.charAt(repositoryName.length())
-	// == ':')) {
-	// continue;
-	// }
-	// String[] split = StringUtils.split(str, ':');
-	// if (split.length > 2) {
-	// hash = split[1];
-	// break;
-	// }
-	// }
-	// raf.close();
-	// return hash;
-	// } catch (Exception e) {
-	// throw new RuntimeException(e);
-	// } finally {
-	// indexFileLock.readLock().unlock();
-	// }
-	// }
 }
