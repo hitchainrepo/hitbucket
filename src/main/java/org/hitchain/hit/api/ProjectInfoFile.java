@@ -85,6 +85,12 @@ public class ProjectInfoFile implements Serializable {
 		ECKey repoKeyPair = new ECKey();
 		KeyPair rootKeyRsa = RSAUtil.generateKey();
 		ECKey rootKeyEcc = new ECKey();
+		System.out.println("ROOT-PUB-RSA:"+Hex.toHexString(rootKeyRsa.getPublic().getEncoded()));
+		System.out.println("ROOT-PRI-RSA:"+Hex.toHexString(rootKeyRsa.getPrivate().getEncoded()));
+		System.out.println("ROOT-PUB-ECC:"+Hex.toHexString(rootKeyEcc.getAddress()));
+		System.out.println("ROOT-PRI-ECC:"+Hex.toHexString(rootKeyEcc.getPrivKeyBytes()));
+		System.out.println("REPO-PUB-ECC:"+Hex.toHexString(repoKeyPair.getPubKey()));
+		System.out.println("REPO-PRI-ECC:"+Hex.toHexString(repoKeyPair.getPrivKeyBytes()));
 		KeyPair helloKeyRsa = RSAUtil.generateKey();
 		ECKey helloKeyEcc = new ECKey();
 		ProjectInfoFile info = new ProjectInfoFile();
