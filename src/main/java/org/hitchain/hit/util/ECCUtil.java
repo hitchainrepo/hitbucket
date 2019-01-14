@@ -49,16 +49,16 @@ public class ECCUtil {
 	 * Equal to CURVE.getN().shiftRight(1), used for canonicalising the S value of a
 	 * signature. If you aren't sure what this is about, you can ignore it.
 	 */
-	public static final BigInteger HALF_CURVE_ORDER;
-	private static final SecureRandom secureRandom;
+	//public static final BigInteger HALF_CURVE_ORDER;
+	//private static final SecureRandom secureRandom;
 
 	static {
 		// All clients must agree on the curve to use by agreement. Ethereum uses
 		// secp256k1.
 		X9ECParameters params = SECNamedCurves.getByName("secp256k1");
 		CURVE = new ECDomainParameters(params.getCurve(), params.getG(), params.getN(), params.getH());
-		HALF_CURVE_ORDER = params.getN().shiftRight(1);
-		secureRandom = new SecureRandom();
+		//HALF_CURVE_ORDER = params.getN().shiftRight(1);
+		//secureRandom = new SecureRandom();
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 	}
 
@@ -145,7 +145,6 @@ public class ECCUtil {
 		ECPrivateKeySpec privateKeySpec = new ECPrivateKeySpec(s, ecParameterSpec);
 		try {
 			KeyFactory keyFactory = KeyFactory.getInstance("EC");
-			ECKey key;
 			return keyFactory.generatePrivate(privateKeySpec);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -245,7 +244,7 @@ public class ECCUtil {
 				getPrivateKeyFromECBigIntAndCurve(key.getPrivKey()));
 	}
 
-	public static String encryptWithPasswordHex(String content, String password) {
+	public static byte[] encryptWithPasswordHex(byte[] content, String password) {
 		try {
 			String pwd = password; // 口令
 			PBEKeySpec keySpec = new PBEKeySpec(pwd.toCharArray()); // 密钥格式化
@@ -257,14 +256,18 @@ public class ECCUtil {
 			PBEParameterSpec parameterSpec = new PBEParameterSpec(salt, 100); // PBE参数格式化
 			Cipher cipher = Cipher.getInstance("PBEWithMD5AndDES"); // 确定算法
 			cipher.init(Cipher.ENCRYPT_MODE, key, parameterSpec); // 确定口令 和 盐
-			return Hex.toHexString(cipher.doFinal(ByteUtils.utf8(content))); // 加密
+			return cipher.doFinal(content); // 加密
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
 		}
 	}
 
-	public static String decryptWithPassword(String encryptedHex, String password) {
+	public static String encryptWithPasswordHex(String content, String password) {
+		return Hex.toHexString(encryptWithPasswordHex(ByteUtils.utf8(content), password));
+	}
+
+	public static byte[] decryptWithPassword(byte[] encrypted, String password) {
 		try {
 			String pwd = password; // 口令
 			PBEKeySpec keySpec = new PBEKeySpec(pwd.toCharArray()); // 密钥格式化
@@ -276,21 +279,32 @@ public class ECCUtil {
 			PBEParameterSpec parameterSpec = new PBEParameterSpec(salt, 100); // PBE参数格式化
 			Cipher cipher = Cipher.getInstance("PBEWithMD5AndDES"); // 确定算法
 			cipher.init(Cipher.DECRYPT_MODE, key, parameterSpec); // 进入解密模式
-			return ByteUtils.utf8(cipher.doFinal(Hex.decode(encryptedHex))); // 解密
+			return cipher.doFinal(encrypted); // 解密
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
 		}
 	}
 
+	public static String decryptWithPassword(String encryptedHex, String password) {
+		return ByteUtils.utf8(decryptWithPassword(Hex.decode(encryptedHex), password));
+	}
+
 	public static void main(String[] args) throws Exception {
 		String pwd = "f9553a312f682c94fc7647aab8308668cf801b862d5340ba0c0a9bcd90766da3"; // 口令
 		String hexString = Hex.toHexString(new ECKey().getPrivKeyBytes());
-		String encrypted = encryptWithPasswordHex(hexString, pwd);
+		String encrypted = encryptWithPasswordHex(StringUtils.repeat(hexString, 100), pwd);
 		System.out.println(encrypted);
 		System.out.println(decryptWithPassword(encrypted, pwd));
 		System.out.println(hexString);
-
+		{
+			ECKey key = new ECKey();
+			byte[] publicEncrypt = publicEncrypt(StringUtils.repeat(hexString, 100).getBytes(),
+					getPublicKeyFromEthereumPublicKeyHex(Hex.toHexString(key.getPubKey())));
+			byte[] privateDecrypt = privateDecrypt(publicEncrypt,
+					getPrivateKeyFromEthereumHex(Hex.toHexString(key.getPrivKeyBytes())));
+			System.out.println(new String(privateDecrypt));
+		}
 	}
 
 	public static void main6(String[] args) throws Exception {
