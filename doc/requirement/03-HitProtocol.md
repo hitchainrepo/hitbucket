@@ -125,8 +125,67 @@ DAPP的作用就是维护索引文件，确保索引文件的更新是合法的�
 - 更新项目，客户端先从 DAPP 中获得必要的索引信息，把内容更新到 D-Storage 中，然后再通过 D-APP 更新索引信息，如果是私有仓库则需要先加密后传输
 
 
+### 2.HIT 协议(0.2)
+
+HIT 协议0.2版本架构图如下：
+
+![图片](https://docs.google.com/drawings/d/e/2PACX-1vRwB1_4oG4Rgufoh1nzlueqqZnrL46Mzue9CvGR9EFvmTyxWP4ocbeMcNl3ns0DefP-suftzcGbVUQZ/pub?w=960&h=720)
+[EditMe](https://docs.google.com/drawings/d/1SVB5wzVhKqobR4q6Yi-gNVVzdRhYf8GWrJlRzhWiKJI/edit?usp=sharing)
+
+#### 2.1.HIT仓储结构说明
+
+HIT 仓储结构在基于 GIT 的仓储结构上添加两个文件：ProjectInfoFile 和 GitFileIndex：
+
+- ProjectInfoFile：用于存储项目的基础信息包括：版本、仓库名称及合约地址及加密信息、拥有者及以太坊地址、团队成员及以太坊地址。
+- GitFileIndex：是对整个.git 目录下的文件进行索引，上传更新及下载更新都需要这个文件。
+
+ProjectInfoFile结构规范：
+
+    存储位置：objects/info/projectinfo
+    文件内容如下：
+    sign: 数据签名的 HASH 码，以用于验证下面数据的准确性
+    {
+    version: 1, 版本
+    ethereumUrl: the ethereum entrance url, Erhereum入口 URL
+    fileServerUrl: the file server url, could be ipfs entrance url, 文件服务器入口 URL
+    repoName: /userName/repoName.git, 仓库名称
+    repoPriKey: 代码仓库的私钥（由拥有者的私钥加密）
+    repoPubKey: 代码仓库的公钥
+    repoAddress: 代码仓库的合约地址
+    owner: 仓库拥有者
+    ownerPubKeyRsa: 仓库拥有者公钥
+    ownerAddressEcc: 仓库拥有者Ethereum地址
+    [{
+      member: 团队成员
+      memberPubKeyRsa: 成员的公钥
+      memberAddressEcc: 成员的Ethereum地址
+      memberRepoPriKey: 成员的仓库私钥加密
+    }*]
+    }
 
 
+GitFileIndex结构规范：
+
+    存储位置：objects/pack/gitfile.idx
+    压缩：GZIP
+    文件内容如下：
+    ipfsHash:sha1:fileName*
+
+#### 2.2.HIT与智能合约
+
+智能合约部署到以太坊链中，当进行 Push 操作时，需要先把 GitFileIndex 上传到 IPFS 中，再把返回的 HASH 值更新到智能合约中。
+
+当进行 Pull 操作时，需要先从智能合约中取得最新的 GitFileIndex HASH 值，再进行内容下载更新。
+
+#### 2.3.HIT与IPFS
+
+目前采用 IPFS 为仓库的存储，按目前的机制，可以采用其他的存储方案如 SIA。在项目进行 PUSH 时，需要把文件先与 GitFileIndex 进行比对，对差异部份进行上传，同时更新 GitFileIndex，最后更新到智能合约中。
+
+#### 2.4.HIT与DAPP
+
+- DAPP 可以监听以太坊上的区块链变化，并取得项目的地址等信息，对于公开项目可以下载整个仓库的代码并进行索引，以及提供相关的服务。
+- DAPP 也可以根据 HIT 规范进行代理 HIT 功能，这样可以使得采用原生 GIT 就可以直接访问 HIT 仓库，用户无须改变任何操作习惯。
+- DAPP 可以根据监控的仓库变化对项目成员进行奖励(需要配合用于奖励的智能合约)，包括迁移项目、Commit、PR、Fork 等。
 
 
 
