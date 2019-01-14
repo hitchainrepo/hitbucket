@@ -12,6 +12,7 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -70,13 +71,14 @@ public class EthereumUtils {
 
 	public static String post(String url, String content) {
 		try {
-			RequestConfig config = RequestConfig.custom().setConnectTimeout(5000).setSocketTimeout(3000).build();
+			HostnameVerifier hostnameVerifier = org.apache.http.conn.ssl.NoopHostnameVerifier.INSTANCE;
+			RequestConfig config = RequestConfig.custom().setConnectTimeout(60000).setSocketTimeout(60000).build();
 			//采用绕过验证的方式处理https请求
 			SSLContext sslcontext = createIgnoreVerifySSL();
 			// 设置协议http和https对应的处理socket链接工厂的对象
+			SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(sslcontext, hostnameVerifier);
 			Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder.<ConnectionSocketFactory>create()
-					.register("http", PlainConnectionSocketFactory.INSTANCE)
-					.register("https", new SSLConnectionSocketFactory(sslcontext)).build();
+					.register("http", PlainConnectionSocketFactory.INSTANCE).register("https", socketFactory).build();
 			PoolingHttpClientConnectionManager connManager = new PoolingHttpClientConnectionManager(
 					socketFactoryRegistry);
 			HttpClients.custom().setConnectionManager(connManager);
@@ -133,27 +135,34 @@ public class EthereumUtils {
 		String init = post(url, content);
 		if (StringUtils.startsWith(init, "ERROR:")) {
 			for (int i = 0; i < 10; i++) {
-				address = post(url, content);
-				if (!address.startsWith("ERROR:")) {
+				init = post(url, content);
+				if (!init.startsWith("ERROR:")) {
 					return address;
 				}
 			}
+		} else {
+			return address;
 		}
 		return null;
 	}
 
 	public static void updateProjectAddress(String urlBase, String contractAddressddress, String ownerPriKeyEcc,
 			String newProjectHash) {
-		String oldProjectAddress = StringUtils.defaultString(getProjectAddress(urlBase, contractAddressddress), "-");
-		//
-		String url = urlBase + "/api/web3j/writeRepositoryNameContract";
-		String content = "PrivateKey=" + ownerPriKeyEcc + "\n" + "ContractAddress=" + contractAddressddress + "\n"
-				+ "updateRepositoryAddress(oldAddr,newAddr)\n" + "Arg1=" + oldProjectAddress + "\n" + "Arg2="
-				+ newProjectHash + "\n" + "GasLimit=5000000\n" + "Gwei=0\n";
-		String write = post(url, content);
-		if (StringUtils.startsWith(write, "ERROR:")) {
-			throw new RuntimeException(write);
+		String result = "";
+		for (int i = 0; i < 10; i++) {
+			String projectAddress = getProjectAddress(urlBase, contractAddressddress);
+			String oldProjectAddress = StringUtils.isBlank(projectAddress) ? "-" : projectAddress;
+			//
+			String url = urlBase + "/api/web3j/writeRepositoryNameContract";
+			String content = "PrivateKey=" + ownerPriKeyEcc + "\n" + "ContractAddress=" + contractAddressddress + "\n"
+					+ "FunctionName=updateRepositoryAddress(oldAddr,newAddr)\n" + "Arg1=" + oldProjectAddress + "\n"
+					+ "Arg2=" + newProjectHash + "\n" + "GasLimit=5000000\n" + "Gwei=0\n";
+			result = post(url, content);
+			if (!StringUtils.startsWith(result, "ERROR:")) {
+				return;
+			}
 		}
+		throw new RuntimeException(result);
 	}
 
 	public static String getProjectAddress(String urlBase, String contractAddress) {
