@@ -60,7 +60,7 @@ import io.ipfs.multihash.Multihash;
 public class GitHelper {
 
 	public static final String URL_IPFS = System.getProperty("URL_IPFS", "121.40.127.45"/*"http://121.40.127.45"*/);
-	public static final String URL_ETHER = System.getProperty("URL_ETHER", "https://localhost:1443");
+	public static final String URL_ETHER = System.getProperty("URL_ETHER", "https://120.26.82.66:1443");
 	private static final String rootPubKeyEcc = "0x837a4bbef0f7235b8fdb03c55d0d98f27f49cda8";
 	private static final String rootPriKeyEcc = "448b60044aec0065a08115d7af1038491830f697c36118e046e38cf7002ee45b";
 	private static final String rootPubKeyRsa = "30819f300d06092a864886f70d010101050003818d0030818902818100df6c814a1b827317370607e207a8749f12497d4ea339cd4f4a38df3690c9d24eb279852780105ed4f7a493833b0ed27409b74eb58b1a452a66be052146ee1f5fb0fa42231221f22cd73e70026b606862b91365fdbe6b2af79838eaa38db60dddc01ecf78f6881880ad399e65747fe86f5e844f5cd4b40f6de8c3e8e60db343290203010001";
@@ -476,7 +476,7 @@ public class GitHelper {
 				ProjectInfoFile info = new ProjectInfoFile();
 				{
 					info.setVersion("1");
-					info.setEthereumUrl("https://localhost:1443");
+					info.setEthereumUrl(URL_ETHER);
 					info.setFileServerUrl(URL_IPFS);
 					info.setRepoName(getProjectName(projectDir));
 					ECKey repoKeyPair = new ECKey();
